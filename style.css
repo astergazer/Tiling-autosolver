@@ -115,8 +115,9 @@ footer { padding: 28px; color: var(--muted); text-align: center; font-size: .75r
 [hidden] { display:none !important; }
 .board, .tile-editor { display:block; width:100%; max-width:100%; background:transparent; padding:8px; overflow:visible; }
 .lattice-svg { display:block; max-width:100%; height:auto; user-select:none; touch-action:none; overflow:visible; }
-.lattice-polygon { fill:#e5e7df; stroke:#51665b; stroke-width:1.2px; vector-effect:non-scaling-stroke; stroke-linejoin:round; }
-.lattice-polygon.selected { fill:var(--tile-color,var(--orange)); }
+.lattice-polygon { fill:#e5e7df; stroke:#e5e7df; stroke-width:.6px; vector-effect:non-scaling-stroke; stroke-linejoin:round; }
+.lattice-polygon.selected { fill:var(--tile-color,var(--orange)); stroke:var(--tile-color,var(--orange)); }
+.lattice-edges { fill:none; stroke:#51665b; stroke-width:1px; vector-effect:non-scaling-stroke; stroke-linejoin:round; pointer-events:none; }
 .lattice-polygon[role="button"] { cursor:crosshair; }
 .lattice-polygon[role="button"]:hover, .lattice-polygon:focus { stroke:#111; stroke-width:3px; outline:none; }
 .piece-number { font-size:.22px; text-anchor:middle; dominant-baseline:central; fill:#14231b; pointer-events:none; font-weight:800; }

@@ -143,3 +143,47 @@ test("hexagonal board solutions cover only the hexagonal mask", () => {
   const expected=board.cells.map(c=>c.join(",")).sort();
   for(const solution of result.solutions) assert.deepEqual(solution.flatMap(p=>p.keys).sort(),expected);
 });
+
+test("hex cells are regular and use exactly identical shared vertices", () => {
+  const neighbors = [[1,0],[-1,0],[0,1],[0,-1],[1,-1],[-1,1]];
+  for (const [x,y] of [[0,0],[-8,3],[15,15],[30,30]]) {
+    const vertices = cellPolygon("hex",[x,y]);
+    for (let i=0;i<6;i++) {
+      const p=vertices[i], prev=vertices[(i+5)%6], next=vertices[(i+1)%6];
+      const u=[prev[0]-p[0],prev[1]-p[1]], v=[next[0]-p[0],next[1]-p[1]];
+      assert.ok(Math.abs(Math.hypot(...v)-1)<1e-12,"side length is 1");
+      assert.ok(Math.abs(u[0]*v[0]+u[1]*v[1]+.5)<1e-12,"interior angle is 120 degrees");
+    }
+    const keys = new Set(vertices.map(p=>p.join(",")));
+    for(const [dx,dy] of neighbors) {
+      assert.equal(cellPolygon("hex",[x+dx,y+dy]).filter(p=>keys.has(p.join(","))).length,2);
+    }
+  }
+});
+
+test("full hex boards have one closed boundary and no interior holes", () => {
+  for(const size of [1,2,6,16]) {
+    const board=shapedBoard("hex",size), vertices=new Set(), edges=new Map();
+    for(const cell of board.cells) {
+      const points=cellPolygon("hex",cell).map(p=>p.join(","));
+      points.forEach((p,i)=>{
+        vertices.add(p);
+        const edge=[p,points[(i+1)%6]].sort().join(";");
+        edges.set(edge,(edges.get(edge)||0)+1);
+      });
+    }
+    assert.equal(vertices.size-edges.size+board.cells.length,1,"Euler characteristic of a filled disk");
+    const boundary=new Map();
+    for(const [edge,count] of edges) {
+      assert.ok(count===1||count===2,"one boundary cell or two edge neighbors");
+      if(count!==1) continue;
+      const [a,b]=edge.split(";");
+      boundary.set(a,[...(boundary.get(a)||[]),b]);
+      boundary.set(b,[...(boundary.get(b)||[]),a]);
+    }
+    for(const adjacent of boundary.values()) assert.equal(adjacent.length,2);
+    const seen=new Set(), stack=[boundary.keys().next().value];
+    while(stack.length) { const p=stack.pop(); if(seen.has(p))continue; seen.add(p);stack.push(...boundary.get(p)); }
+    assert.equal(seen.size,boundary.size,"one boundary loop, no inner gaps");
+  }
+});
