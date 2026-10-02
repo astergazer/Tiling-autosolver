@@ -126,18 +126,18 @@ footer { padding: 28px; color: var(--muted); text-align: center; font-size: .75r
 .triangle-cell.triangle-down { clip-path: polygon(0 0, 66.667% 0, 33.333% 100%); }
 .triangle-cell.triangle-up { left: 0; }
 .triangle-cell.triangle-down { left: 0; }
-.hex-row { height: 47px; }
-.hex-row:nth-child(odd) { margin-left: 27px; }
-.hex-cell { flex: 0 0 62px; width: 62px; height: 62px; margin: 0 -8px -7px 0; border-radius: 0; clip-path: polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%); }
+.hex-row { height: 54px; }
+.hex-row:nth-child(odd) { margin-left: 23.25px; }
+.hex-cell { flex: 0 0 46.5px; width: 62px; height: 54px; margin: 0 -15.5px 0 0; border-radius: 0; clip-path: polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%); }
 .tile-editor .square-row { height: 36px; }
 .tile-editor .square-cell { flex-basis: 34px; width: 34px; height: 34px; }
 .tile-editor .triangle-row { height: 30px; }
 .tile-editor .triangle-row:nth-child(odd) { margin-left: 17px; }
 .tile-editor .triangle-pair { flex-basis: 51px; width: 51px; height: 30px; margin-right: -17px; }
 .tile-editor .triangle-cell { width: 51px; height: 30px; }
-.tile-editor .hex-row { height: 30px; }
-.tile-editor .hex-row:nth-child(odd) { margin-left: 17px; }
-.tile-editor .hex-cell { flex-basis: 38px; width: 38px; height: 38px; margin: 0 -5px -4px 0; }
+.tile-editor .hex-row { height: 33px; }
+.tile-editor .hex-row:nth-child(odd) { margin-left: 14.25px; }
+.tile-editor .hex-cell { flex-basis: 28.5px; width: 38px; height: 33px; margin: 0 -9.5px 0 0; }
 .cell.on { background: var(--orange); }
 .cell.off { background: #59645d; opacity: .3; }
 .cell.placed { opacity: 1; outline: 1px solid #26342c; font-size: .72rem; font-weight: 900; color: #13251b; }
