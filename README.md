@@ -37,7 +37,7 @@ A tile count of `0` means unlimited copies. Positive counts require exactly that
 
 ## Current scope
 
-The triangular board uses two small triangles per lattice cell, and the hexagonal board uses axial coordinates. Preset tiles are currently available on the square grid; other grids use the custom tile editor. Count-only mode, puzzle import/export, and search animation are not implemented.
+The triangular board is an equilateral triangle with n² small triangles. The hexagonal board has 1 + 3n(n−1) complete hexagonal cells arranged with sixfold symmetry; its perimeter follows the cell edges. Choose the side length to resize either board. Board editing, tile editing, previews and solutions share SVG polygons derived from the solver coordinates. Click or drag to paint cells. The tile editor uses the same board shape and can be resized from 2 to 16. Preset tiles are currently available on the square grid; other grids use the custom tile editor. Count-only mode, puzzle import/export, and search animation are not implemented.
 
 ## GitHub Pages
 
