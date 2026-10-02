@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { analyzeProblem, normalizeCells, orientations, solveTilings } from "../solver.js";
+import { allBoardSymmetries, fullBoardCells, orientationsForGrid } from "../lattice.js";
 
 const fullBoard = (width, height) => ({
   width, height,
@@ -73,4 +74,29 @@ test("holes with checkerboard imbalance admit no domino tiling", () => {
 
 test("rotation-disabled dominoes have one 2x2 tiling", () => {
   assert.equal(solveTilings(fullBoard(2, 2), [{ ...domino, rotate: false }], { maxSolutions: 10 }).solutions.length, 1);
+});
+
+test("square board symmetry mode merges rotated and reflected tilings", () => {
+  const ordinary = solveTilings(fullBoard(3, 2), [domino], { maxSolutions: 10 });
+  const merged = solveTilings(fullBoard(3, 2), [domino], { maxSolutions: 10, symmetry: "same" });
+  assert.equal(ordinary.solutions.length, 3);
+  assert.equal(merged.solutions.length, 2);
+});
+
+test("lattice transformations provide distinct triangle and hex orientations", () => {
+  assert.equal(orientationsForGrid("triangle", [[0, 0, 0], [0, 0, 1]]).length, 3);
+  assert.equal(orientationsForGrid("hex", [[0, 0], [1, 0]]).length, 3);
+  assert.equal(allBoardSymmetries("square", fullBoardCells("square", 2, 2)).length, 8);
+  assert.equal(allBoardSymmetries("triangle", fullBoardCells("triangle", 1, 1)).length, 4);
+  assert.equal(allBoardSymmetries("hex", fullBoardCells("hex", 1, 1)).length, 12);
+});
+
+test("triangle and hex lattices enumerate tilings", () => {
+  const triangleBoard = { grid: "triangle", width: 1, height: 1, cells: fullBoardCells("triangle", 1, 1) };
+  const triangleTile = { cells: [[0, 0, 0], [0, 0, 1]], count: 0, rotate: true };
+  assert.equal(solveTilings(triangleBoard, [triangleTile], { maxSolutions: 20 }).solutions.length, 1);
+
+  const hexBoard = { grid: "hex", width: 2, height: 1, cells: fullBoardCells("hex", 2, 1) };
+  const hexTile = { cells: [[0, 0], [1, 0]], count: 0, rotate: true };
+  assert.equal(solveTilings(hexBoard, [hexTile], { maxSolutions: 20 }).solutions.length, 1);
 });
