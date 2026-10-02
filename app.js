@@ -1,4 +1,4 @@
-import { cellKey, fullBoardCells } from "./lattice.js";
+import { cellKey, shapedBoard, cellPolygon } from "./lattice.js";
 
 const $ = (selector) => document.querySelector(selector);
 const boardElement = $("#board");
@@ -46,75 +46,82 @@ function clearSolutions() {
   renderSolutionBoard();
 }
 
-function resetBoard(width = board.width, height = board.height) {
-  board = {
-    grid: $("#grid-type").value || board.grid,
-    width, height,
-    active: new Set(fullBoardCells($("#grid-type").value || board.grid, width, height).map(cellKey)),
-  };
-  clearSolutions();
-  renderBoard();
-}
-
-function cellClass(grid, cell, extra = "") {
-  const triangle = grid === "triangle" ? (cell[2] === 0 ? " triangle-up" : " triangle-down") : "";
-  return `cell lattice-cell ${grid}-cell${triangle} ${extra}`;
-}
-
-function createCell(grid, coords, selected, onClick = null) {
-  const button = document.createElement("button");
-  const id = cellKey(coords);
-  button.className = cellClass(grid, coords, selected.has(id) ? "on" : "off");
-  button.title = `(${coords.join(", ")})`;
-  if (onClick) button.addEventListener("click", () => onClick(id));
-  return button;
-}
-
-function cellsAt(grid, x, y) { return grid === "triangle" ? [[x,y,0],[x,y,1]] : [[x,y]]; }
-
-function renderBoard() {
-  boardElement.dataset.grid = board.grid;
-  boardElement.replaceChildren();
-  for (let y = 0; y < board.height; y += 1) {
-    const row = document.createElement("div"); row.className = `lattice-row ${board.grid}-row`;
-    for (let x = 0; x < board.width; x += 1) {
-      const pair = document.createElement("div"); pair.className = "triangle-pair";
-      for (const coords of cellsAt(board.grid, x, y)) {
-        pair.append(createCell(board.grid, coords, board.active, (id) => {
-          board.active.has(id) ? board.active.delete(id) : board.active.add(id);
-          clearSolutions(); renderBoard();
-        }));
-      }
-      row.append(pair);
-    }
-    boardElement.append(row);
-  }
-  $("#board-summary").textContent = `${board.grid} grid · ${board.width} × ${board.height} cells · ${board.active.size} active cells`;
-  renderSolutionBoard();
-}
-
-function renderEditor() {
+function resetBoard(size = Number($("#board-width").value), height = Number($("#board-height").value)) {
   const grid = $("#grid-type").value;
-  tileEditor.dataset.grid = grid;
-  tileEditor.replaceChildren();
-  for (let y = 0; y < 5; y += 1) {
-    const row = document.createElement("div"); row.className = `lattice-row editor-row ${grid}-row`;
-    for (let x = 0; x < 5; x += 1) {
-      const pair = document.createElement("div"); pair.className = "triangle-pair";
-      for (const coords of cellsAt(grid, x, y)) {
-        const id = cellKey(coords);
-        const button = document.createElement("button");
-        button.className = cellClass(grid, coords, editorCells.has(id) ? "on" : "off");
-        button.addEventListener("click", () => {
-          editorCells.has(id) ? editorCells.delete(id) : editorCells.add(id);
-          renderEditor();
-        });
-        pair.append(button);
-      }
-      row.append(pair);
+  size=Math.min(16,Math.max(1,Math.floor(size)||6));
+  height=Math.min(16,Math.max(1,Math.floor(height)||6));
+  $("#board-width").value=size; $("#board-height").value=height;
+  const shape = shapedBoard(grid, size, height);
+  board = {...shape, active:new Set(shape.cells.map(cellKey))};
+  $("#width-label").textContent = grid === "square" ? "横" : "一辺のセル数";
+  $("#height-field").hidden = grid !== "square";
+  $("#preset-select").disabled = grid !== "square";
+  $("#load-preset").disabled = grid !== "square";
+  clearSolutions(); renderBoard();
+}
+
+const svgNS = "http://www.w3.org/2000/svg";
+function svgNode(name, attrs = {}) {
+  const node = document.createElementNS(svgNS,name);
+  for(const [key,value] of Object.entries(attrs)) node.setAttribute(key,String(value));
+  return node;
+}
+
+function drawGrid(container, grid, cells, selected, onToggle = null, placed = new Map()) {
+  container.replaceChildren();
+  if(!cells.length) return;
+  const polygons = cells.map(cell => cellPolygon(grid,cell));
+  const points = polygons.flat();
+  const minX = Math.min(...points.map(p=>p[0])), maxX = Math.max(...points.map(p=>p[0]));
+  const minY = Math.min(...points.map(p=>p[1])), maxY = Math.max(...points.map(p=>p[1]));
+  const svg = svgNode("svg", {viewBox:`${minX-.12} ${minY-.12} ${maxX-minX+.24} ${maxY-minY+.24}`,class:"lattice-svg"});
+  svg.style.width = `${Math.min(560,(maxX-minX+.24)*48)}px`;
+  let painting = null;
+  const apply = (polygon,id,value) => {
+    onToggle(id,value); polygon.classList.toggle("selected",value);
+    polygon.setAttribute("aria-pressed",String(value));
+  };
+  cells.forEach((cell,i)=>{
+    const id=cellKey(cell), vertices=polygons[i], data=placed.get(id);
+    const polygon=svgNode("polygon",{points:vertices.map(p=>p.join(",")).join(" "),class:`lattice-polygon${selected.has(id)?" selected":""}`});
+    if(data) polygon.style.fill=data.color;
+    const title=svgNode("title"); title.textContent=data?.name || `セル (${id})`; polygon.append(title);
+    if(onToggle) {
+      polygon.setAttribute("tabindex","0"); polygon.setAttribute("role","button");
+      polygon.setAttribute("aria-label",`セル (${id})`); polygon.setAttribute("aria-pressed",String(selected.has(id)));
+      polygon.addEventListener("pointerdown",e=>{if(e.button!==0)return; e.preventDefault(); painting=!selected.has(id); apply(polygon,id,painting);});
+      polygon.addEventListener("pointerenter",e=>{if(painting!==null && e.buttons===1) apply(polygon,id,painting);});
+      polygon.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();apply(polygon,id,!selected.has(id));}});
     }
-    tileEditor.append(row);
-  }
+    svg.append(polygon);
+    if(data) {
+      const cx=vertices.reduce((v,p)=>v+p[0],0)/vertices.length, cy=vertices.reduce((v,p)=>v+p[1],0)/vertices.length;
+      const label=svgNode("text",{x:cx,y:cy,class:"piece-number"}); label.textContent=data.label; svg.append(label);
+    }
+  });
+  svg.addEventListener("pointerup",()=>{painting=null;});
+  svg.addEventListener("pointerleave",()=>{painting=null;});
+  container.append(svg);
+}
+
+function updateSummary() {
+  const names={square:"四角形",triangle:"正三角形",hex:"六角形"};
+  $("#board-summary").textContent=`${names[board.grid]}の盤面 ／ 使用 ${board.active.size} セル`;
+}
+function renderBoard() {
+  drawGrid(boardElement,board.grid,board.cells,board.active,(id,value)=>{
+    value?board.active.add(id):board.active.delete(id); clearSolutions(); updateSummary();
+  });
+  updateSummary(); renderSolutionBoard();
+}
+function renderEditor() {
+  const grid=$("#grid-type").value;
+  const size=Number($("#editor-size").value);
+  editorSizeBeforeChange=size;
+  const cells=shapedBoard(grid,size).cells;
+  drawGrid(tileEditor,grid,cells,editorCells,(id,value)=>{
+    value?editorCells.add(id):editorCells.delete(id);
+  });
 }
 
 function normalizedEditorCells() {
@@ -155,6 +162,7 @@ function addTile() {
   if (!isConnected(cells, grid)) return setStatus("タイルは辺を共有するセル同士でつなげてください。", "error");
   const tile = {
     id: editingTileId ?? crypto.randomUUID(), grid, cells,
+    editorCells:[...editorCells].map(id=>id.split(",").map(Number)), editorSize:Number($("#editor-size").value),
     name: $("#tile-name").value.trim() || `Tile ${tiles.length + 1}`,
     count: Math.min(99, Math.max(0, Math.floor(Number($("#tile-count").value) || 0))),
     rotate: $("#tile-rotate").checked,
@@ -180,7 +188,7 @@ function renderTiles() {
     const card = document.createElement("article"); card.className = `tile-card ${tile.grid === board.grid ? "" : "inactive-tile"}`;
     const preview = document.createElement("div"); preview.className = `tile-preview ${tile.grid}-preview`;
     preview.style.setProperty("--tile-color", tile.color);
-    for (const cell of tile.cells) { const part = document.createElement("span"); part.className = cellClass(tile.grid, cell, "on"); preview.append(part); }
+    drawGrid(preview,tile.grid,tile.cells,new Set(tile.cells.map(cellKey)));
     const info = document.createElement("div");
     const title = document.createElement("h3"); title.textContent = tile.name;
     const meta = document.createElement("p"); meta.textContent = `${tile.grid} · ${tile.cells.length}セル · ${tile.count || "無制限"}枚 · ${tile.rotate ? "回転あり" : "固定"}${tile.reflect ? "・反転あり" : ""}`;
@@ -189,13 +197,16 @@ function renderTiles() {
     const edit = document.createElement("button"); edit.className = "button secondary"; edit.textContent = "編集";
     edit.disabled = tile.grid !== $("#grid-type").value;
     edit.addEventListener("click", () => {
-      editingTileId = tile.id; editorCells = new Set(tile.cells.map(cellKey));
+      editingTileId = tile.id;
+      // Restore the original editor coordinates so re-editing cannot clip a shape.
+      editorCells = new Set((tile.editorCells || tile.cells).map(cellKey));
+      $("#editor-size").value = tile.editorSize || 5;
       $("#tile-name").value = tile.name; $("#tile-count").value = tile.count;
       $("#tile-rotate").checked = tile.rotate; $("#tile-reflect").checked = tile.reflect; $("#tile-color").value = tile.color;
       $("#add-tile").textContent = "変更を保存"; renderEditor();
     });
     const remove = document.createElement("button"); remove.className = "remove-tile"; remove.textContent = "×"; remove.title = `${tile.name}を削除`;
-    remove.addEventListener("click", () => { tiles = tiles.filter((item) => item.id !== tile.id); clearSolutions(); renderTiles(); });
+    remove.addEventListener("click", () => { tiles = tiles.filter((item) => item.id !== tile.id); if(editingTileId===tile.id){editingTileId=null;$("#add-tile").textContent="種類を追加";} clearSolutions(); renderTiles(); });
     actions.append(edit, remove); card.append(preview, info, actions); list.append(card);
   });
 }
@@ -233,32 +244,12 @@ function startSolve(oneOnly) {
 }
 
 function renderSolutionBoard() {
-  solutionElement.dataset.grid = board.grid;
-  solutionElement.replaceChildren();
-  const solution = solutions[currentSolution];
   const placed = new Map();
-  if (solution) solution.forEach((placement, placementIndex) => placement.cells.forEach((cell) => {
-    placed.set(cellKey(cell), { tileIndex: placement.tileIndex, placementIndex });
+  const solution = solutions[currentSolution];
+  if(solution) solution.forEach((placement,index)=>placement.cells.forEach(cell=>{
+    placed.set(cellKey(cell),{color:palette[index%palette.length],label:index+1,name:solvedTiles[placement.tileIndex]?.name || "タイル"});
   }));
-  for (let y = 0; y < board.height; y += 1) {
-    const row = document.createElement("div"); row.className = `lattice-row ${board.grid}-row`;
-    for (let x = 0; x < board.width; x += 1) {
-      const pair = document.createElement("div"); pair.className = "triangle-pair";
-      for (const coords of cellsAt(board.grid, x, y)) {
-        const id = cellKey(coords); const cell = createCell(board.grid, coords, board.active);
-        cell.disabled = true;
-        const data = placed.get(id);
-        if (data) {
-          const tile = solvedTiles[data.tileIndex];
-          cell.style.backgroundColor = tile?.color || palette[data.placementIndex % palette.length];
-          cell.classList.add("placed"); cell.textContent = String(data.placementIndex + 1); cell.title = tile?.name || "tile";
-        }
-        pair.append(cell);
-      }
-      row.append(pair);
-    }
-    solutionElement.append(row);
-  }
+  drawGrid(solutionElement,board.grid,board.cells.filter(c=>board.active.has(cellKey(c))),board.active,null,placed);
   $("#solution-count").textContent = solutions.length.toLocaleString("ja-JP");
   $("#solution-index").textContent = solutions.length ? `${currentSolution + 1} / ${solutions.length}` : "— / —";
   $("#previous-solution").disabled = currentSolution <= 0;
@@ -268,9 +259,9 @@ function renderSolutionBoard() {
 $("#grid-type").addEventListener("change", () => {
   editingTileId = null; editorCells.clear();
   const grid = $("#grid-type").value;
-  editorCells = new Set(grid === "triangle" ? ["1,2,0","1,2,1"] : grid === "hex" ? ["1,2","2,2"] : ["1,2","2,2"]);
+  editorCells = new Set(grid === "triangle" ? ["1,2,0","1,2,1"] : grid === "hex" ? ["4,4","5,4"] : ["1,2","2,2"]);
   $("#add-tile").textContent = "種類を追加";
-  resetBoard(board.width, board.height); renderEditor(); renderTiles();
+  $("#editor-size").value=5; resetBoard(); renderEditor(); renderTiles();
 });
 $("#resize-board").addEventListener("click", () => {
   const width = Math.min(16, Math.max(1, Math.floor(Number($("#board-width").value) || 6)));
@@ -284,9 +275,21 @@ $("#clear-tile").addEventListener("click", () => { editingTileId = null; editorC
 $("#load-preset").addEventListener("click", () => {
   if (["triangle","hex"].includes($("#grid-type").value)) return setStatus("三角・六角格子では編集面を使ってセルを描いてください。", "error");
   const preset = presets[$("#preset-select").value];
+  $("#editor-size").value=5;
   editorCells = new Set(preset.cells.map(([x, y]) => `${x + 1},${y + 1}`)); $("#tile-name").value = preset.name;
   editingTileId = null; $("#add-tile").textContent = "種類を追加"; renderEditor();
 });
+$("#symmetry-mode").addEventListener("change",clearSolutions);
+$("#editor-size").addEventListener("change",()=>{
+  const size=Math.min(16,Math.max(2,Math.floor(Number($("#editor-size").value)||5)));
+  const allowed=new Set(shapedBoard(board.grid,size).cells.map(cellKey));
+  if([...editorCells].some(id=>!allowed.has(id))) {
+    $("#editor-size").value=editorSizeBeforeChange;
+    setStatus("選択セルが編集面の外に出るため、縮小できません。先に外側のセルを消してください。","error"); return;
+  }
+  $("#editor-size").value=size; editorSizeBeforeChange=size; renderEditor();
+});
+let editorSizeBeforeChange=5;
 $("#find-one").addEventListener("click", () => startSolve(true));
 $("#enumerate").addEventListener("click", () => startSolve(false));
 $("#cancel").addEventListener("click", () => { stopWorker(); setStatus("探索を中止しました。"); });
