@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="ブラウザだけで動くポリオミノ敷き詰め探索機" />
+    <title>Tiling Autosolver</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <div>
+        <p class="eyebrow">EXACT COVER PLAYGROUND</p>
+        <h1>Tiling Autosolver</h1>
+        <p class="subtitle">盤面とタイルを描く。あとは探索機に任せる。</p>
+      </div>
+      <div class="hero-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+    </header>
+
+    <main>
+      <section class="panel board-panel">
+        <div class="section-heading">
+          <div><span class="step">01</span><h2>盤面</h2></div>
+          <p>マスをクリックして使用／除外を切り替えます。</p>
+        </div>
+        <div class="controls compact">
+          <label>横 <input id="board-width" type="number" min="1" max="16" value="6" /></label>
+          <label>縦 <input id="board-height" type="number" min="1" max="16" value="6" /></label>
+          <button id="resize-board" class="button secondary">変更</button>
+          <button id="fill-board" class="button ghost">全選択</button>
+          <button id="clear-board" class="button ghost">全解除</button>
+        </div>
+        <div id="board" class="grid board" aria-label="盤面エディタ"></div>
+        <p id="board-summary" class="summary"></p>
+      </section>
+
+      <section class="panel tile-panel">
+        <div class="section-heading">
+          <div><span class="step">02</span><h2>タイル</h2></div>
+          <p>5×5の編集面で形を描き、種類として追加します。</p>
+        </div>
+        <div class="tile-workspace">
+          <div>
+            <div id="tile-editor" class="grid tile-editor" aria-label="タイルエディタ"></div>
+            <div class="controls compact tile-fields">
+              <label>名前 <input id="tile-name" type="text" value="Domino" maxlength="24" /></label>
+              <label>枚数 <input id="tile-count" type="number" min="0" max="99" value="0" title="0は無制限" /></label>
+              <label class="check"><input id="tile-rotate" type="checkbox" checked /> 回転</label>
+              <label class="check"><input id="tile-reflect" type="checkbox" /> 反転</label>
+              <label>色 <input id="tile-color" type="color" value="#ff6b35" /></label>
+            </div>
+            <div class="controls compact">
+              <button id="add-tile" class="button primary">種類を追加</button>
+              <button id="clear-tile" class="button ghost">形を消去</button>
+              <select id="preset-select" aria-label="プリセット">
+                <option value="domino">ドミノ</option>
+                <option value="l3">Lトロミノ</option>
+                <option value="i3">Iトロミノ</option>
+                <option value="t4">Tテトロミノ</option>
+                <option value="l4">Lテトロミノ</option>
+              </select>
+              <button id="load-preset" class="button secondary">読込</button>
+            </div>
+          </div>
+          <div id="tile-list" class="tile-list"></div>
+        </div>
+        <p class="hint">枚数が正なら指定枚数をすべて使用します。0なら無制限です。盤面全体の回転・反転も別の解として数えます。</p>
+      </section>
+
+      <section class="panel solve-panel">
+        <div class="section-heading">
+          <div><span class="step">03</span><h2>探索</h2></div>
+          <p>制限を設けて列挙するため、大きな問題でも停止できます。</p>
+        </div>
+        <div class="controls">
+          <label>最大解数 <input id="solution-limit" type="number" min="1" max="10000" value="100" /></label>
+          <label>時間制限（秒） <input id="time-limit" type="number" min="1" max="120" value="10" /></label>
+          <button id="find-one" class="button secondary">一解だけ探す</button>
+          <button id="enumerate" class="button primary">解を列挙</button>
+          <button id="cancel" class="button danger" disabled>中止</button>
+        </div>
+        <div id="status" class="status" data-kind="idle">
+          <span class="status-dot"></span><span id="status-text">探索条件を設定してください。</span>
+        </div>
+        <div class="solution-area">
+          <div id="solution-board" class="grid board solution-board" aria-label="解の表示"></div>
+          <aside class="solution-info">
+            <p class="big-number" id="solution-count">0</p>
+            <p>保存された解</p>
+            <dl>
+              <div><dt>探索ノード</dt><dd id="node-count">—</dd></div>
+              <div><dt>計算時間</dt><dd id="elapsed">—</dd></div>
+            </dl>
+            <div class="solution-nav">
+              <button id="previous-solution" class="button ghost" disabled>← 前</button>
+              <span id="solution-index">— / —</span>
+              <button id="next-solution" class="button ghost" disabled>次 →</button>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <footer>Runs locally in your browser · No puzzle data is uploaded</footer>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
