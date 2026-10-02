@@ -24,9 +24,9 @@
           <p>格子を選び、セルをクリックして盤面を編集します。</p>
         </div>
         <div class="controls compact">
-          <label>格子 <select id="grid-type"><option value="square">正方形格子</option><option value="triangle">三角格子</option><option value="hex">六角形格子</option></select></label>
-          <label>横 <input id="board-width" type="number" min="1" max="16" value="6" /></label>
-          <label>縦 <input id="board-height" type="number" min="1" max="16" value="6" /></label>
+          <label>格子 <select id="grid-type"><option value="square">四角形の盤面・正方格子</option><option value="triangle">正三角形の盤面・三角格子</option><option value="hex">六角形の盤面・六角格子</option></select></label>
+          <label><span id="width-label">横</span> <input id="board-width" type="number" min="1" max="16" value="6" /></label>
+          <label id="height-field">縦 <input id="board-height" type="number" min="1" max="16" value="6" /></label>
           <button id="resize-board" class="button secondary">変更</button>
           <button id="fill-board" class="button ghost">全選択</button>
           <button id="clear-board" class="button ghost">全解除</button>
@@ -42,6 +42,8 @@
         </div>
         <div class="tile-workspace">
           <div>
+            <label>編集面の一辺 <input id="editor-size" type="number" min="2" max="16" value="5" /></label>
+            <p class="hint">クリック、またはドラッグしてミノを描けます。</p>
             <div id="tile-editor" class="grid tile-editor" aria-label="タイルエディタ"></div>
             <div class="controls compact tile-fields">
               <label>名前 <input id="tile-name" type="text" value="Domino" maxlength="24" /></label>

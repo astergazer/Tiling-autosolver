@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { analyzeProblem, normalizeCells, orientations, solveTilings } from "../solver.js";
-import { allBoardSymmetries, fullBoardCells, orientationsForGrid } from "../lattice.js";
+import { allBoardSymmetries, fullBoardCells, orientationsForGrid, shapedBoard, cellPolygon } from "../lattice.js";
 
 const fullBoard = (width, height) => ({
   width, height,
@@ -99,4 +99,47 @@ test("triangle and hex lattices enumerate tilings", () => {
   const hexBoard = { grid: "hex", width: 2, height: 1, cells: fullBoardCells("hex", 2, 1) };
   const hexTile = { cells: [[0, 0], [1, 0]], count: 0, rotate: true };
   assert.equal(solveTilings(hexBoard, [hexTile], { maxSolutions: 20 }).solutions.length, 1);
+});
+
+
+test("regular board masks have expected areas and symmetry groups", () => {
+  for(let n=2;n<=6;n++) {
+    const tri=shapedBoard("triangle",n), hex=shapedBoard("hex",n);
+    assert.equal(tri.cells.length,n*n);
+    assert.equal(hex.cells.length,1+3*n*(n-1));
+    assert.equal(allBoardSymmetries("triangle",tri.cells).length,6);
+    assert.equal(allBoardSymmetries("hex",hex.cells).length,12);
+  }
+});
+
+test("60-degree triangle rotation permits both triangle directions", () => {
+  assert.equal(orientationsForGrid("triangle",[[0,0,0]]).length,2);
+  const tile={cells:[[0,0,0]],count:0,rotate:true};
+  const result=solveTilings(shapedBoard("triangle",3),[tile],{maxSolutions:10,symmetry:"same"});
+  assert.equal(result.solutions.length,1);
+  assert.equal(result.solutions[0].length,9);
+});
+
+test("drawn lattice neighbors share exactly one full edge", () => {
+  const pointKey=p=>p.map(v=>v.toFixed(7)).join(",");
+  const edgeKeys=(grid,cell)=>{
+    const vertices=cellPolygon(grid,cell);
+    return vertices.map((p,i)=>[pointKey(p),pointKey(vertices[(i+1)%vertices.length])].sort().join(";"));
+  };
+  for(const [grid,origin,neighbors] of [
+    ["hex",[2,2],[[3,2],[1,2],[2,3],[2,1],[3,1],[1,3]]],
+    ["triangle",[2,2,0],[[2,2,1],[1,2,1],[2,1,1]]],
+  ]) {
+    const edges=new Set(edgeKeys(grid,origin));
+    for(const cell of neighbors) assert.equal(edgeKeys(grid,cell).filter(e=>edges.has(e)).length,1);
+  }
+});
+
+test("hexagonal board solutions cover only the hexagonal mask", () => {
+  const board=shapedBoard("hex",2);
+  const tiles=[{cells:[[0,0],[1,0]],count:3,rotate:true},{cells:[[0,0]],count:1,rotate:true}];
+  const result=solveTilings(board,tiles,{maxSolutions:1000,symmetry:"same"});
+  assert.ok(result.solutions.length>0);
+  const expected=board.cells.map(c=>c.join(",")).sort();
+  for(const solution of result.solutions) assert.deepEqual(solution.flatMap(p=>p.keys).sort(),expected);
 });

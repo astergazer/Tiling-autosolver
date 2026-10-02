@@ -9,7 +9,7 @@ function triangleVertices([i, j, dir]) {
     : [[i + 1, j + 1], [i + 1, j], [i, j + 1]];
 }
 
-function rotateVertex([x, y]) { return [-x - y, x]; }
+function rotateVertex([x, y]) { return [-y, x + y]; }
 function reflectVertex([x, y]) { return [x + y, -y]; }
 
 function identifyTriangle(vertices) {
@@ -74,14 +74,16 @@ export function allBoardSymmetries(grid, boardCells) {
   const order = grid === "square" ? 4 : 6;
   const original = new Set(boardCells.map(key));
   const transforms = [];
+  const originX = Math.min(...boardCells.map(c => c[0]));
+  const originY = Math.min(...boardCells.map(c => c[1]));
   for (const reflected of [false, true]) {
     for (let turns = 0; turns < order; turns += 1) {
       const mapped = boardCells.map((cell) => transformCell(grid, cell, turns, reflected));
       const minX = Math.min(...mapped.map(([x]) => x));
       const minY = Math.min(...mapped.map(([, y]) => y));
       const normalized = mapped.map((cell) => grid === "triangle"
-        ? [cell[0] - minX, cell[1] - minY, cell[2]]
-        : [cell[0] - minX, cell[1] - minY]);
+        ? [cell[0] - minX + originX, cell[1] - minY + originY, cell[2]]
+        : [cell[0] - minX + originX, cell[1] - minY + originY]);
       const mapping = new Map(boardCells.map((cell, i) => [key(cell), key(normalized[i])]));
       if (normalized.length === original.size && normalized.every((cell) => original.has(key(cell)))) transforms.push(mapping);
     }
@@ -111,3 +113,33 @@ export function fullBoardCells(grid, width, height) {
 }
 
 export function cellKey(cell) { return key(cell); }
+
+// All board, editor and solution views use these same lattice polygons.
+export function cellPolygon(grid, cell) {
+  const [x,y] = cell;
+  if (grid === "square") return [[x,y],[x+1,y],[x+1,y+1],[x,y+1]];
+  const h = Math.sqrt(3) / 2;
+  if (grid === "triangle") return triangleVertices(cell).map(([q,r]) => [q+r/2,-h*r]);
+  const cx = Math.sqrt(3)*(x+y/2), cy = 1.5*y;
+  return Array.from({length:6}, (_,i) => {
+    const angle = (60*i-30)*Math.PI/180;
+    return [cx+Math.cos(angle),cy+Math.sin(angle)];
+  });
+}
+
+export function shapedBoard(grid, size, height = size) {
+  const cells = [];
+  if (grid === "square") return {grid,width:size,height,cells:fullBoardCells(grid,size,height)};
+  if (grid === "triangle") {
+    for (let y=0;y<size;y++) for(let x=0;x<size-y;x++) {
+      cells.push([x,y,0]);
+      if(x+y<size-1) cells.push([x,y,1]);
+    }
+    return {grid,width:size,height:size,cells};
+  }
+  const radius=size-1, span=2*radius+1;
+  for(let y=0;y<span;y++) for(let x=0;x<span;x++) {
+    if(Math.abs(x+y-2*radius)<=radius) cells.push([x,y]);
+  }
+  return {grid,width:span,height:span,cells};
+}

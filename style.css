@@ -110,49 +110,18 @@ footer { padding: 28px; color: var(--muted); text-align: center; font-size: .75r
   main { padding-inline: 14px; }
 }
 
-/* Lattice editors and displays */
-.board, .tile-editor {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 0;
-  overflow: auto; width: max-content; max-width: 100%; padding: 10px;
-}
-.lattice-row { display: flex; align-items: center; height: var(--row-height, 54px); }
-.square-row { height: 57px; }
-.square-cell { flex: 0 0 54px; width: 54px; height: 54px; border-radius: 4px; margin: 0 3px 0 0; }
-.triangle-row { height: 47px; }
-.triangle-row:nth-child(odd) { margin-left: 27px; }
-.triangle-pair { position: relative; display: flex; flex: 0 0 81px; width: 81px; height: 47px; margin-right: -27px; }
-.triangle-cell { position: absolute; width: 81px; height: 47px; border-radius: 0; margin: 0; }
-.triangle-cell.triangle-up { clip-path: polygon(66.667% 0, 33.333% 100%, 100% 100%); }
-.triangle-cell.triangle-down { clip-path: polygon(0 0, 66.667% 0, 33.333% 100%); }
-.triangle-cell.triangle-up { left: 0; }
-.triangle-cell.triangle-down { left: 0; }
-.hex-row { height: 47px; }
-.hex-row:nth-child(odd) { margin-left: 27px; }
-.hex-cell { flex: 0 0 62px; width: 62px; height: 62px; margin: 0 -8px -7px 0; border-radius: 0; clip-path: polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%); }
-.tile-editor .square-row { height: 36px; }
-.tile-editor .square-cell { flex-basis: 34px; width: 34px; height: 34px; }
-.tile-editor .triangle-row { height: 30px; }
-.tile-editor .triangle-row:nth-child(odd) { margin-left: 17px; }
-.tile-editor .triangle-pair { flex-basis: 51px; width: 51px; height: 30px; margin-right: -17px; }
-.tile-editor .triangle-cell { width: 51px; height: 30px; }
-.tile-editor .hex-row { height: 30px; }
-.tile-editor .hex-row:nth-child(odd) { margin-left: 17px; }
-.tile-editor .hex-cell { flex-basis: 38px; width: 38px; height: 38px; margin: 0 -5px -4px 0; }
-.cell.on { background: var(--orange); }
-.cell.off { background: #59645d; opacity: .3; }
-.cell.placed { opacity: 1; outline: 1px solid #26342c; font-size: .72rem; font-weight: 900; color: #13251b; }
-.tile-card { grid-template-columns: 72px 1fr auto; }
-.tile-actions { display: flex; align-items: center; gap: 6px; }
-.tile-actions .button { min-height: 34px; padding: 6px 9px; font-size: .75rem; }
-.inactive-tile { opacity: .55; }
-.tile-preview { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 2px; min-width: 54px; max-width: 68px; }
-.mini-cell { width: 12px; height: 12px; }
-.tile-preview .lattice-cell { background: var(--tile-color); }
-.tile-preview .square-cell { width: 12px; height: 12px; flex: 0 0 12px; margin: 0; }
-.tile-preview .triangle-cell { position: relative; width: 14px; height: 12px; flex: 0 0 14px; clip-path: polygon(50% 0,0 100%,100% 100%); }
-.tile-preview .hex-cell { width: 14px; height: 14px; flex: 0 0 14px; margin: 0; }
-.solution-board { gap: 0; }
-.solution-board .square-cell { margin: 0; border-radius: 0; border: 1px solid #27352d; }
-.solution-board .triangle-cell { pointer-events: none; }
-.solution-board .triangle-pair { margin-right: -27px; }
-.solution-board .hex-cell { pointer-events: none; }
+
+/* Geometry is shared with the solver; CSS only sets presentation. */
+[hidden] { display:none !important; }
+.board, .tile-editor { display:block; width:100%; max-width:100%; background:transparent; padding:8px; overflow:visible; }
+.lattice-svg { display:block; max-width:100%; height:auto; user-select:none; touch-action:none; overflow:visible; }
+.lattice-polygon { fill:#e5e7df; stroke:#51665b; stroke-width:1.2px; vector-effect:non-scaling-stroke; stroke-linejoin:round; }
+.lattice-polygon.selected { fill:var(--tile-color,var(--orange)); }
+.lattice-polygon[role="button"] { cursor:crosshair; }
+.lattice-polygon[role="button"]:hover, .lattice-polygon:focus { stroke:#111; stroke-width:3px; outline:none; }
+.piece-number { font-size:.22px; text-anchor:middle; dominant-baseline:central; fill:#14231b; pointer-events:none; font-weight:800; }
+.tile-preview { width:64px; }
+.tile-preview .lattice-svg { width:64px !important; max-height:80px; }
+.tile-actions { display:flex; gap:6px; align-items:center; }
+.tile-actions .button { padding:6px; min-height:34px; font-size:.75rem; }
+.inactive-tile { opacity:.55; }
