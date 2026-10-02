@@ -1,4 +1,4 @@
-import { cellKey, shapedBoard, cellPolygon } from "./lattice.js";
+import { cellKey, shapedBoard, cellPolygon } from "./lattice.js?v=20261002-hex2";
 
 const $ = (selector) => document.querySelector(selector);
 const boardElement = $("#board");
@@ -74,8 +74,14 @@ function drawGrid(container, grid, cells, selected, onToggle = null, placed = ne
   const points = polygons.flat();
   const minX = Math.min(...points.map(p=>p[0])), maxX = Math.max(...points.map(p=>p[0]));
   const minY = Math.min(...points.map(p=>p[1])), maxY = Math.max(...points.map(p=>p[1]));
-  const svg = svgNode("svg", {viewBox:`${minX-.12} ${minY-.12} ${maxX-minX+.24} ${maxY-minY+.24}`,class:"lattice-svg"});
-  svg.style.width = `${Math.min(560,(maxX-minX+.24)*48)}px`;
+  const viewWidth = maxX-minX+.24, viewHeight = maxY-minY+.24;
+  const width = Math.min(560,viewWidth*48), height = width*viewHeight/viewWidth;
+  const svg = svgNode("svg", {
+    viewBox:`${minX-.12} ${minY-.12} ${viewWidth} ${viewHeight}`,
+    width,height,preserveAspectRatio:"xMidYMid meet",class:"lattice-svg",
+  });
+  svg.style.width = `${width}px`;
+  const edges = new Map();
   let painting = null;
   const apply = (polygon,id,value) => {
     onToggle(id,value); polygon.classList.toggle("selected",value);
@@ -84,7 +90,11 @@ function drawGrid(container, grid, cells, selected, onToggle = null, placed = ne
   cells.forEach((cell,i)=>{
     const id=cellKey(cell), vertices=polygons[i], data=placed.get(id);
     const polygon=svgNode("polygon",{points:vertices.map(p=>p.join(",")).join(" "),class:`lattice-polygon${selected.has(id)?" selected":""}`});
-    if(data) polygon.style.fill=data.color;
+    if(data) { polygon.style.fill=data.color; polygon.style.stroke=data.color; }
+    vertices.forEach((point,j)=>{
+      const a=point.join(","), b=vertices[(j+1)%vertices.length].join(",");
+      edges.set([a,b].sort().join(";"),`M${a}L${b}`);
+    });
     const title=svgNode("title"); title.textContent=data?.name || `セル (${id})`; polygon.append(title);
     if(onToggle) {
       polygon.setAttribute("tabindex","0"); polygon.setAttribute("role","button");
@@ -99,6 +109,9 @@ function drawGrid(container, grid, cells, selected, onToggle = null, placed = ne
       const label=svgNode("text",{x:cx,y:cy,class:"piece-number"}); label.textContent=data.label; svg.append(label);
     }
   });
+  // Draw each shared edge once over the fills. The fill-colored strokes
+  // under this path cover rasterization hairlines at fractional pixel sizes.
+  svg.append(svgNode("path",{d:[...edges.values()].join(" "),class:"lattice-edges","aria-hidden":"true"}));
   svg.addEventListener("pointerup",()=>{painting=null;});
   svg.addEventListener("pointerleave",()=>{painting=null;});
   container.append(svg);
@@ -219,7 +232,7 @@ function startSolve(oneOnly) {
   clearSolutions();
   solvedTiles = tiles.filter((tile) => tile.grid === board.grid);
   if (tiles.length !== solvedTiles.length) setStatus("別の格子のタイルは今回の探索から除外しました。", "idle");
-  worker = new Worker("worker.js", { type: "module" });
+  worker = new Worker(new URL("worker.js?v=20261002-hex2",import.meta.url), { type: "module" });
   setStatus("探索中…", "busy");
   $("#cancel").disabled = false; $("#enumerate").disabled = true; $("#find-one").disabled = true;
   worker.onmessage = ({ data }) => {

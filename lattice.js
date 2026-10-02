@@ -120,11 +120,12 @@ export function cellPolygon(grid, cell) {
   if (grid === "square") return [[x,y],[x+1,y],[x+1,y+1],[x,y+1]];
   const h = Math.sqrt(3) / 2;
   if (grid === "triangle") return triangleVertices(cell).map(([q,r]) => [q+r/2,-h*r]);
-  const cx = Math.sqrt(3)*(x+y/2), cy = 1.5*y;
-  return Array.from({length:6}, (_,i) => {
-    const angle = (60*i-30)*Math.PI/180;
-    return [cx+Math.cos(angle),cy+Math.sin(angle)];
-  });
+  // Pointy-top regular hexagons of side length 1. Build vertices on one
+  // integer lattice before scaling, so neighbors get identical shared
+  // vertices (rather than slightly different trig/translation roundoff).
+  const u = 2*x+y, v = 3*y;
+  return [[1,-1],[1,1],[0,2],[-1,1],[-1,-1],[0,-2]]
+    .map(([du,dv]) => [(u+du)*h,(v+dv)/2]);
 }
 
 export function shapedBoard(grid, size, height = size) {
