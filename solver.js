@@ -1,4 +1,5 @@
-/** Pure polyomino tiling solver used by both the browser worker and tests. */
+/** Lattice-cell tiling solver used by both the browser worker and tests. */
+import { allBoardSymmetries, cellKey, orientationsForGrid, solutionSymmetryKey } from "./lattice.js";
 
 export function normalizeCells(cells) {
   if (!cells.length) return [];
@@ -69,19 +70,24 @@ export function analyzeProblem(board, tiles) {
 }
 
 function buildPlacements(board, tiles) {
-  const boardSet = new Set(board.cells.map(([x, y]) => `${x},${y}`));
+  const grid = board.grid ?? "square";
+  const boardSet = new Set(board.cells.map(cellKey));
   const byCell = new Map([...boardSet].map((key) => [key, []]));
   const placements = [];
 
   tiles.forEach((tile, tileIndex) => {
-    const variants = orientations(tile.cells, tile.rotate !== false, tile.reflect === true);
+    const variants = orientationsForGrid(grid, tile.cells, tile.rotate !== false, tile.reflect === true);
     for (const variant of variants) {
       const maxX = Math.max(...variant.map(([x]) => x));
       const maxY = Math.max(...variant.map(([, y]) => y));
-      for (let y = 0; y + maxY < board.height; y += 1) {
-        for (let x = 0; x + maxX < board.width; x += 1) {
-          const absolute = variant.map(([dx, dy]) => [x + dx, y + dy]);
-          const keys = absolute.map(([cx, cy]) => `${cx},${cy}`);
+      const minX = Math.min(...variant.map(([x]) => x));
+      const minY = Math.min(...variant.map(([, y]) => y));
+      for (let y = -minY; y + maxY < board.height; y += 1) {
+        for (let x = -minX; x + maxX < board.width; x += 1) {
+          const absolute = variant.map((cell) => grid === "triangle"
+            ? [cell[0] + x, cell[1] + y, cell[2]]
+            : [cell[0] + x, cell[1] + y]);
+          const keys = absolute.map(cellKey);
           if (!keys.every((key) => boardSet.has(key))) continue;
           const placement = { tileIndex, cells: absolute, keys };
           const placementIndex = placements.push(placement) - 1;
@@ -108,10 +114,12 @@ export function solveTilings(board, tiles, options = {}) {
   const timeLimitMs = Math.max(50, options.timeLimitMs ?? 10_000);
   const started = performance.now();
   const { placements, byCell, boardSet } = buildPlacements(board, tiles);
+  const symmetryMaps = options.symmetry === "same" ? allBoardSymmetries(board.grid ?? "square", board.cells) : [];
   const uncovered = new Set(boardSet);
   const remaining = tiles.map((tile) => (tile.count > 0 ? tile.count : Infinity));
   const chosen = [];
   const solutions = [];
+  const seenSolutions = new Set();
   let nodes = 0;
   let stopped = "complete";
 
@@ -142,7 +150,11 @@ export function solveTilings(board, tiles, options = {}) {
     const requiredArea = remaining.reduce((sum, count, i) => sum + (Number.isFinite(count) ? count * tiles[i].cells.length : 0), 0);
     if (requiredArea > uncovered.size) return false;
     if (uncovered.size === 0) {
-      solutions.push(chosen.map((index) => placements[index]));
+      const solution = chosen.map((index) => placements[index]);
+      const symmetryKey = symmetryMaps.length ? solutionSymmetryKey(solution, symmetryMaps) : null;
+      if (symmetryKey !== null && seenSolutions.has(symmetryKey)) return false;
+      if (symmetryKey !== null) seenSolutions.add(symmetryKey);
+      solutions.push(solution);
       if (solutions.length >= maxSolutions) {
         stopped = "limit";
         return true;
