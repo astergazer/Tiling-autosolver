@@ -21,9 +21,10 @@
       <section class="panel board-panel">
         <div class="section-heading">
           <div><span class="step">01</span><h2>盤面</h2></div>
-          <p>マスをクリックして使用／除外を切り替えます。</p>
+          <p>格子を選び、セルをクリックして盤面を編集します。</p>
         </div>
         <div class="controls compact">
+          <label>格子 <select id="grid-type"><option value="square">正方形格子</option><option value="triangle">三角格子</option><option value="hex">六角形格子</option></select></label>
           <label>横 <input id="board-width" type="number" min="1" max="16" value="6" /></label>
           <label>縦 <input id="board-height" type="number" min="1" max="16" value="6" /></label>
           <button id="resize-board" class="button secondary">変更</button>
@@ -37,7 +38,7 @@
       <section class="panel tile-panel">
         <div class="section-heading">
           <div><span class="step">02</span><h2>タイル</h2></div>
-          <p>5×5の編集面で形を描き、種類として追加します。</p>
+          <p>選択した格子のセルを編集します。追加済みのタイルも編集できます。</p>
         </div>
         <div class="tile-workspace">
           <div>
@@ -64,7 +65,7 @@
           </div>
           <div id="tile-list" class="tile-list"></div>
         </div>
-        <p class="hint">枚数が正なら指定枚数をすべて使用します。0なら無制限です。盤面全体の回転・反転も別の解として数えます。</p>
+        <p class="hint">枚数が正なら指定枚数をすべて使用します。0なら無制限です。</p>
       </section>
 
       <section class="panel solve-panel">
@@ -73,6 +74,7 @@
           <p>制限を設けて列挙するため、大きな問題でも停止できます。</p>
         </div>
         <div class="controls">
+          <label>対称な解 <select id="symmetry-mode"><option value="different">回転・反転も別の解</option><option value="same">盤面の回転・反転は同じ解</option></select></label>
           <label>最大解数 <input id="solution-limit" type="number" min="1" max="10000" value="100" /></label>
           <label>時間制限（秒） <input id="time-limit" type="number" min="1" max="120" value="10" /></label>
           <button id="find-one" class="button secondary">一解だけ探す</button>
