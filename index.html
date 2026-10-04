@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="ブラウザだけで動くポリオミノ敷き詰め探索機" />
     <title>Tiling Autosolver</title>
-    <link rel="stylesheet" href="style.css?v=20261002-hex2" />
+    <link rel="stylesheet" href="style.css?v=20261004-gallery1" />
   </head>
   <body>
     <header class="hero">
@@ -18,9 +18,21 @@
     </header>
 
     <main>
+      <section class="panel sample-panel" aria-label="サンプルパズル">
+        <details id="sample-gallery" open>
+          <summary class="gallery-heading"><h2>サンプルから遊ぶ</h2><span>6問 · 3種類の格子</span></summary>
+          <p class="hint">問題を読み込むと、盤面・タイル・探索設定が切り替わります。読み込み直前の編集内容には「読み込みを戻す」で戻れます。</p>
+          <div id="sample-list" class="sample-list"></div>
+        </details>
+        <div id="sample-feedback" class="sample-feedback" hidden>
+          <p id="sample-message" role="status"></p>
+          <button id="undo-sample" class="button ghost" hidden>読み込みを戻す</button>
+        </div>
+      </section>
+
       <section class="panel board-panel">
         <div class="section-heading">
-          <div><span class="step">01</span><h2>盤面</h2></div>
+          <div><span class="step">01</span><h2 id="board-heading" tabindex="-1">盤面</h2></div>
           <p>格子を選び、セルをクリックして盤面を編集します。</p>
         </div>
         <div class="controls compact">
@@ -106,6 +118,6 @@
     </main>
 
     <footer>Runs locally in your browser · No puzzle data is uploaded</footer>
-    <script type="module" src="app.js?v=20261002-hex2"></script>
+    <script type="module" src="app.js?v=20261004-gallery1"></script>
   </body>
 </html>
