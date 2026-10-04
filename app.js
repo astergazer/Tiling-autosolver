@@ -1,5 +1,6 @@
-import { cellKey, shapedBoard, cellPolygon } from "./lattice.js?v=20261004-gallery1";
-import { SAMPLE_PUZZLES, createSamplePuzzle } from "./samples.js?v=20261004-gallery1";
+import { cellKey, shapedBoard, cellPolygon, isConnected } from "./lattice.js?v=20261004-share1";
+import { SAMPLE_PUZZLES, createSamplePuzzle } from "./samples.js?v=20261004-share1";
+import { createShareUrl, decodePuzzle } from "./sharing.js?v=20261004-share1";
 
 const $ = (selector) => document.querySelector(selector);
 const boardElement = $("#board");
@@ -23,6 +24,8 @@ let currentSolution = 0;
 let editingTileId = null;
 let worker = null;
 let beforeSample = null;
+let tileDraftDirty = false;
+let puzzleInfoVisible = false;
 
 function setStatus(message, kind = "idle") {
   $("#status-text").textContent = message;
@@ -37,7 +40,8 @@ function stopWorker() {
   $("#find-one").disabled = false;
 }
 
-function clearSolutions() {
+function clearSolutions(problemChanged = true) {
+  if (problemChanged) invalidateShareLink();
   stopWorker();
   solutions = [];
   solvedTiles = [];
@@ -66,23 +70,22 @@ function updateBoardControls() {
   $("#load-preset").disabled = board.grid !== "square";
 }
 
-const puzzleFields = ["grid-type", "board-width", "board-height", "editor-size", "tile-name", "tile-count", "tile-color", "preset-select", "symmetry-mode", "solution-limit", "time-limit"];
+const puzzleFields = ["grid-type", "board-width", "board-height", "editor-size", "tile-name", "tile-count", "tile-color", "preset-select", "symmetry-mode", "solution-limit", "time-limit", "puzzle-title", "puzzle-description"];
 
 function capturePuzzle() {
   return structuredClone({
-    board, tiles, editorCells, editingTileId,
+    board, tiles, editorCells, editingTileId, tileDraftDirty, puzzleInfoVisible,
     fields: Object.fromEntries(puzzleFields.map(id => [id, $(`#${id}`).value])),
     rotate: $("#tile-rotate").checked, reflect: $("#tile-reflect").checked,
   });
 }
 
-function loadSample(id) {
-  const sample = createSamplePuzzle(id);
+function applyPuzzle(sample, showInfo = false) {
   beforeSample = capturePuzzle();
-  $("#grid-type").value = sample.grid;
+  $("#grid-type").value = sample.board.grid;
   resetBoard(sample.size, sample.height ?? sample.size);
   board.active = new Set(sample.board.cells.map(cellKey));
-  tiles = sample.tiles.map((tile, index) => ({ ...tile, id: crypto.randomUUID(), color: palette[index % palette.length] }));
+  tiles = sample.tiles.map((tile, index) => ({ ...tile, id: crypto.randomUUID(), color: tile.color ?? palette[index % palette.length] }));
   const firstTile = tiles[0];
   editingTileId = firstTile.id;
   editorCells = new Set(firstTile.editorCells.map(cellKey));
@@ -96,27 +99,112 @@ function loadSample(id) {
   $("#symmetry-mode").value = sample.options.symmetry;
   $("#solution-limit").value = sample.options.maxSolutions;
   $("#time-limit").value = sample.options.timeLimitMs / 1000;
+  $("#puzzle-title").value = sample.title;
+  $("#puzzle-description").value = sample.description;
+  tileDraftDirty = false;
+  puzzleInfoVisible = showInfo;
+  renderPuzzleInfo();
+  $("#link-error").hidden = true;
   renderBoard(); renderEditor(); renderTiles();
   $("#sample-gallery").open = false;
   $("#sample-feedback").hidden = false;
   $("#undo-sample").hidden = false;
   $("#sample-message").textContent = `「${sample.title}」を読み込みました。「解を列挙」で試せます。`;
-  setStatus("サンプルを読み込みました。「対称な解」を切り替えて解数を比べてみましょう。");
+  setShareStatus("");
   $("#board-heading").focus({ preventScroll: true });
+}
+
+function loadSample(id) {
+  applyPuzzle(createSamplePuzzle(id));
+  setStatus("サンプルを読み込みました。「対称な解」を切り替えて解数を比べてみましょう。");
 }
 
 function undoSample() {
   if (!beforeSample) return;
-  ({ board, tiles, editorCells, editingTileId } = beforeSample);
+  ({ board, tiles, editorCells, editingTileId, tileDraftDirty, puzzleInfoVisible } = beforeSample);
   for (const [id, value] of Object.entries(beforeSample.fields)) $(`#${id}`).value = value;
   $("#tile-rotate").checked = beforeSample.rotate;
   $("#tile-reflect").checked = beforeSample.reflect;
   $("#add-tile").textContent = editingTileId ? "変更を保存" : "種類を追加";
   beforeSample = null;
   updateBoardControls(); clearSolutions(); renderBoard(); renderEditor(); renderTiles();
+  renderPuzzleInfo();
   $("#undo-sample").hidden = true;
   $("#sample-message").textContent = "読み込み直前の盤面・タイル・探索設定に戻しました。";
   $("#board-heading").focus({ preventScroll: true });
+}
+
+function setShareStatus(message, kind = "idle") {
+  $("#share-status").textContent = message;
+  $("#share-status").dataset.kind = kind;
+}
+
+function invalidateShareLink() {
+  if (!$("#share-result").hidden) setShareStatus("内容を変更しました。公開用URLを作り直してください。");
+  $("#share-result").hidden = true;
+  $("#share-url").value = "";
+  $("#open-shared-puzzle").removeAttribute("href");
+}
+
+function renderPuzzleInfo() {
+  $("#puzzle-intro").hidden = !puzzleInfoVisible;
+  $("#puzzle-intro-title").textContent = $("#puzzle-title").value.trim() || "無題の敷き詰めパズル";
+  $("#puzzle-intro-description").textContent = $("#puzzle-description").value.trim();
+}
+
+function solveOptions() {
+  return {
+    maxSolutions: Math.min(10000, Math.max(1, Math.floor(Number($("#solution-limit").value) || 100))),
+    timeLimitMs: Math.min(120, Math.max(1, Math.floor(Number($("#time-limit").value) || 10))) * 1000,
+    symmetry: $("#symmetry-mode").value,
+  };
+}
+
+function publishPuzzle() {
+  invalidateShareLink();
+  if (tileDraftDirty) return setShareStatus("タイルの編集内容が未保存です。「種類を追加」または「変更を保存」を押してから公開してください。", "error");
+  const size = board.grid === "hex" ? (board.width + 1) / 2 : board.width;
+  if (Number($("#board-width").value) !== size || (board.grid === "square" && Number($("#board-height").value) !== board.height)) {
+    return setShareStatus("盤面の寸法が未反映です。盤面の「変更」を押してから公開してください。", "error");
+  }
+  try {
+    const url = createShareUrl({
+      title: $("#puzzle-title").value, description: $("#puzzle-description").value,
+      board: serializableBoard(), tiles: tiles.filter(tile => tile.grid === board.grid), options: solveOptions(),
+    }, window.location.href);
+    $("#share-url").value = url;
+    $("#open-shared-puzzle").href = url;
+    $("#share-result").hidden = false;
+    setShareStatus("公開用URLを作成しました。コピーして共有すると、同じ問題を開けます。", "success");
+  } catch (error) {
+    setShareStatus(error.message, "error");
+  }
+}
+
+async function copyShareUrl() {
+  const url = $("#share-url").value;
+  if (!url) return;
+  try {
+    if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+    await navigator.clipboard.writeText(url);
+    setShareStatus("共有URLをコピーしました。", "success");
+  } catch {
+    $("#share-url").focus(); $("#share-url").select();
+    setShareStatus("URLを選択しました。お使いの端末のコピー操作でコピーしてください。");
+  }
+}
+
+function loadSharedPuzzle() {
+  if (!window.location.hash.startsWith("#puzzle=")) return;
+  try {
+    // Decode and validate the entire link before changing any current work.
+    const puzzle = decodePuzzle(window.location.hash.slice(8));
+    applyPuzzle(puzzle, true);
+    setStatus("共有された問題を読み込みました。「解を列挙」で探索できます。");
+  } catch (error) {
+    $("#link-error").textContent = `共有URLを読み込めませんでした。${error.message}`;
+    $("#link-error").hidden = false;
+  }
 }
 
 function renderSamples() {
@@ -225,6 +313,7 @@ function renderEditor() {
   const cells=shapedBoard(grid,size).cells;
   drawGrid(tileEditor,grid,cells,editorCells,(id,value)=>{
     value?editorCells.add(id):editorCells.delete(id);
+    tileDraftDirty = true; invalidateShareLink();
   });
 }
 
@@ -236,27 +325,6 @@ function normalizedEditorCells() {
   return cells.map((cell) => cell.length === 3
     ? [cell[0] - minX, cell[1] - minY, cell[2]]
     : [cell[0] - minX, cell[1] - minY]);
-}
-
-function neighbors(grid, [x,y,dir]) {
-  if (grid === "square") return [[x+1,y],[x-1,y],[x,y+1],[x,y-1]];
-  if (grid === "hex") return [[x+1,y],[x-1,y],[x,y+1],[x,y-1],[x+1,y-1],[x-1,y+1]];
-  return dir === 0 ? [[x,y,1],[x,y-1,1],[x-1,y,1]] : [[x,y,0],[x+1,y,0],[x,y+1,0]];
-}
-
-function isConnected(cells, grid) {
-  if (!cells.length) return false;
-  const ids = new Set(cells.map(cellKey));
-  const seen = new Set([cellKey(cells[0])]);
-  const stack = [cells[0]];
-  while (stack.length) {
-    const cell = stack.pop();
-    for (const next of neighbors(grid, cell)) {
-      const id = cellKey(next);
-      if (ids.has(id) && !seen.has(id)) { seen.add(id); stack.push(next); }
-    }
-  }
-  return seen.size === ids.size;
 }
 
 function addTile() {
@@ -276,6 +344,7 @@ function addTile() {
   if (editingTileId) tiles[tiles.findIndex((item) => item.id === editingTileId)] = tile;
   else tiles.push(tile);
   editingTileId = null;
+  tileDraftDirty = false;
   $("#add-tile").textContent = "種類を追加";
   $("#tile-color").value = palette[tiles.length % palette.length];
   clearSolutions(); renderTiles(); setStatus(`${tile.name}を保存しました。`);
@@ -302,6 +371,7 @@ function renderTiles() {
     edit.disabled = tile.grid !== $("#grid-type").value;
     edit.addEventListener("click", () => {
       editingTileId = tile.id;
+      tileDraftDirty = false;
       // Restore the original editor coordinates so re-editing cannot clip a shape.
       editorCells = new Set((tile.editorCells || tile.cells).map(cellKey));
       $("#editor-size").value = tile.editorSize || 5;
@@ -320,10 +390,10 @@ function serializableBoard() {
 }
 
 function startSolve(oneOnly) {
-  clearSolutions();
+  clearSolutions(false);
   solvedTiles = tiles.filter((tile) => tile.grid === board.grid);
   if (tiles.length !== solvedTiles.length) setStatus("別の格子のタイルは今回の探索から除外しました。", "idle");
-  worker = new Worker(new URL("worker.js?v=20261004-gallery1",import.meta.url), { type: "module" });
+  worker = new Worker(new URL("worker.js?v=20261004-share1",import.meta.url), { type: "module" });
   setStatus("探索中…", "busy");
   $("#cancel").disabled = false; $("#enumerate").disabled = true; $("#find-one").disabled = true;
   worker.onmessage = ({ data }) => {
@@ -339,11 +409,7 @@ function startSolve(oneOnly) {
   worker.onerror = (event) => { setStatus(`エラー: ${event.message}`, "error"); stopWorker(); };
   worker.postMessage({
     board: serializableBoard(), tiles: solvedTiles,
-    options: {
-      maxSolutions: oneOnly ? 1 : Math.min(10000, Math.max(1, Number($("#solution-limit").value) || 100)),
-      timeLimitMs: Math.min(120, Math.max(1, Number($("#time-limit").value) || 10)) * 1000,
-      symmetry: $("#symmetry-mode").value,
-    },
+    options: { ...solveOptions(), ...(oneOnly ? { maxSolutions: 1 } : {}) },
   });
 }
 
@@ -362,6 +428,7 @@ function renderSolutionBoard() {
 
 $("#grid-type").addEventListener("change", () => {
   editingTileId = null; editorCells.clear();
+  tileDraftDirty = false;
   const grid = $("#grid-type").value;
   editorCells = new Set(grid === "triangle" ? ["1,2,0","1,2,1"] : grid === "hex" ? ["4,4","5,4"] : ["1,2","2,2"]);
   $("#add-tile").textContent = "種類を追加";
@@ -375,16 +442,26 @@ $("#resize-board").addEventListener("click", () => {
 $("#fill-board").addEventListener("click", () => resetBoard());
 $("#clear-board").addEventListener("click", () => { board.active.clear(); clearSolutions(); renderBoard(); });
 $("#add-tile").addEventListener("click", addTile);
-$("#clear-tile").addEventListener("click", () => { editingTileId = null; editorCells.clear(); $("#add-tile").textContent = "種類を追加"; renderEditor(); });
+$("#clear-tile").addEventListener("click", () => { editingTileId = null; editorCells.clear(); tileDraftDirty = false; $("#add-tile").textContent = "種類を追加"; renderEditor(); });
 $("#load-preset").addEventListener("click", () => {
   if (["triangle","hex"].includes($("#grid-type").value)) return setStatus("三角・六角格子では編集面を使ってセルを描いてください。", "error");
   const preset = presets[$("#preset-select").value];
+  tileDraftDirty = true; invalidateShareLink();
   $("#editor-size").value=5;
   editorCells = new Set(preset.cells.map(([x, y]) => `${x + 1},${y + 1}`)); $("#tile-name").value = preset.name;
   editingTileId = null; $("#add-tile").textContent = "種類を追加"; renderEditor();
 });
 $("#symmetry-mode").addEventListener("change",clearSolutions);
 $("#undo-sample").addEventListener("click", undoSample);
+$("#publish-puzzle").addEventListener("click", publishPuzzle);
+$("#copy-share-url").addEventListener("click", copyShareUrl);
+for (const id of ["tile-name", "tile-count", "tile-color", "tile-rotate", "tile-reflect"]) {
+  $(`#${id}`).addEventListener("input", () => { tileDraftDirty = true; invalidateShareLink(); });
+}
+for (const id of ["puzzle-title", "puzzle-description", "solution-limit", "time-limit", "board-width", "board-height"]) {
+  $(`#${id}`).addEventListener("input", () => { invalidateShareLink(); renderPuzzleInfo(); });
+}
+window.addEventListener("hashchange", loadSharedPuzzle);
 $("#editor-size").addEventListener("change",()=>{
   const size=Math.min(16,Math.max(2,Math.floor(Number($("#editor-size").value)||5)));
   const allowed=new Set(shapedBoard(board.grid,size).cells.map(cellKey));
@@ -408,3 +485,4 @@ $("#tile-name").value = "Domino";
 tiles.push({ id: crypto.randomUUID(), grid:"square", name:"Domino", cells:[[0,0],[1,0]], count:0, rotate:true, reflect:false, color:"#ff6b35" });
 renderTiles();
 renderSamples();
+loadSharedPuzzle();

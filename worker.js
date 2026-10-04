@@ -1,4 +1,4 @@
-import { solveTilings } from "./solver.js?v=20261004-gallery1";
+import { solveTilings } from "./solver.js?v=20261004-share1";
 
 self.onmessage = ({ data }) => {
   try {

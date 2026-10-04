@@ -1,4 +1,4 @@
-import { cellKey, shapedBoard } from "./lattice.js?v=20261004-gallery1";
+import { cellKey, shapedBoard } from "./lattice.js?v=20261004-share1";
 
 const domino = { name: "ドミノ", cells: [[0, 0], [1, 0]], count: 0 };
 
