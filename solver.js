@@ -1,5 +1,5 @@
 /** Lattice-cell tiling solver used by both the browser worker and tests. */
-import { allBoardSymmetries, cellKey, orientationsForGrid, solutionSymmetryKey } from "./lattice.js?v=20261002-hex2";
+import { allBoardSymmetries, cellKey, orientationsForGrid, solutionSymmetryKey } from "./lattice.js?v=20261004-gallery1";
 
 export function normalizeCells(cells) {
   if (!cells.length) return [];

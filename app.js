@@ -1,4 +1,5 @@
-import { cellKey, shapedBoard, cellPolygon } from "./lattice.js?v=20261002-hex2";
+import { cellKey, shapedBoard, cellPolygon } from "./lattice.js?v=20261004-gallery1";
+import { SAMPLE_PUZZLES, createSamplePuzzle } from "./samples.js?v=20261004-gallery1";
 
 const $ = (selector) => document.querySelector(selector);
 const boardElement = $("#board");
@@ -21,6 +22,7 @@ let solvedTiles = [];
 let currentSolution = 0;
 let editingTileId = null;
 let worker = null;
+let beforeSample = null;
 
 function setStatus(message, kind = "idle") {
   $("#status-text").textContent = message;
@@ -53,11 +55,100 @@ function resetBoard(size = Number($("#board-width").value), height = Number($("#
   $("#board-width").value=size; $("#board-height").value=height;
   const shape = shapedBoard(grid, size, height);
   board = {...shape, active:new Set(shape.cells.map(cellKey))};
-  $("#width-label").textContent = grid === "square" ? "横" : "一辺のセル数";
-  $("#height-field").hidden = grid !== "square";
-  $("#preset-select").disabled = grid !== "square";
-  $("#load-preset").disabled = grid !== "square";
+  updateBoardControls();
   clearSolutions(); renderBoard();
+}
+
+function updateBoardControls() {
+  $("#width-label").textContent = board.grid === "square" ? "横" : "一辺のセル数";
+  $("#height-field").hidden = board.grid !== "square";
+  $("#preset-select").disabled = board.grid !== "square";
+  $("#load-preset").disabled = board.grid !== "square";
+}
+
+const puzzleFields = ["grid-type", "board-width", "board-height", "editor-size", "tile-name", "tile-count", "tile-color", "preset-select", "symmetry-mode", "solution-limit", "time-limit"];
+
+function capturePuzzle() {
+  return structuredClone({
+    board, tiles, editorCells, editingTileId,
+    fields: Object.fromEntries(puzzleFields.map(id => [id, $(`#${id}`).value])),
+    rotate: $("#tile-rotate").checked, reflect: $("#tile-reflect").checked,
+  });
+}
+
+function loadSample(id) {
+  const sample = createSamplePuzzle(id);
+  beforeSample = capturePuzzle();
+  $("#grid-type").value = sample.grid;
+  resetBoard(sample.size, sample.height ?? sample.size);
+  board.active = new Set(sample.board.cells.map(cellKey));
+  tiles = sample.tiles.map((tile, index) => ({ ...tile, id: crypto.randomUUID(), color: palette[index % palette.length] }));
+  const firstTile = tiles[0];
+  editingTileId = firstTile.id;
+  editorCells = new Set(firstTile.editorCells.map(cellKey));
+  $("#editor-size").value = firstTile.editorSize;
+  $("#tile-name").value = firstTile.name;
+  $("#tile-count").value = firstTile.count;
+  $("#tile-color").value = firstTile.color;
+  $("#tile-rotate").checked = firstTile.rotate;
+  $("#tile-reflect").checked = firstTile.reflect;
+  $("#add-tile").textContent = "変更を保存";
+  $("#symmetry-mode").value = sample.options.symmetry;
+  $("#solution-limit").value = sample.options.maxSolutions;
+  $("#time-limit").value = sample.options.timeLimitMs / 1000;
+  renderBoard(); renderEditor(); renderTiles();
+  $("#sample-gallery").open = false;
+  $("#sample-feedback").hidden = false;
+  $("#undo-sample").hidden = false;
+  $("#sample-message").textContent = `「${sample.title}」を読み込みました。「解を列挙」で試せます。`;
+  setStatus("サンプルを読み込みました。「対称な解」を切り替えて解数を比べてみましょう。");
+  $("#board-heading").focus({ preventScroll: true });
+}
+
+function undoSample() {
+  if (!beforeSample) return;
+  ({ board, tiles, editorCells, editingTileId } = beforeSample);
+  for (const [id, value] of Object.entries(beforeSample.fields)) $(`#${id}`).value = value;
+  $("#tile-rotate").checked = beforeSample.rotate;
+  $("#tile-reflect").checked = beforeSample.reflect;
+  $("#add-tile").textContent = editingTileId ? "変更を保存" : "種類を追加";
+  beforeSample = null;
+  updateBoardControls(); clearSolutions(); renderBoard(); renderEditor(); renderTiles();
+  $("#undo-sample").hidden = true;
+  $("#sample-message").textContent = "読み込み直前の盤面・タイル・探索設定に戻しました。";
+  $("#board-heading").focus({ preventScroll: true });
+}
+
+function renderSamples() {
+  const list = $("#sample-list");
+  const names = { square: "正方格子", triangle: "三角格子", hex: "六角格子" };
+  list.replaceChildren();
+  for (const entry of SAMPLE_PUZZLES) {
+    const sample = createSamplePuzzle(entry.id);
+    const card = document.createElement("article"); card.className = "sample-card";
+    const tag = document.createElement("p"); tag.className = "sample-tag";
+    tag.textContent = `${names[sample.grid]} · ${sample.board.cells.length}セル`;
+    const title = document.createElement("h3"); title.textContent = sample.title;
+    const preview = document.createElement("div"); preview.className = "sample-preview";
+    preview.setAttribute("aria-hidden", "true");
+    const shape = shapedBoard(sample.grid, sample.size, sample.height ?? sample.size);
+    drawGrid(preview, sample.grid, shape.cells, new Set(sample.board.cells.map(cellKey)));
+    const description = document.createElement("p"); description.className = "sample-description";
+    description.textContent = sample.description;
+    const load = document.createElement("button"); load.className = "button secondary";
+    load.textContent = "この問題を読み込む";
+    load.setAttribute("aria-label", `${sample.title}を読み込む`);
+    load.dataset.sampleId = sample.id;
+    load.addEventListener("click", () => loadSample(sample.id));
+    const answer = document.createElement("details"); answer.className = "sample-answer";
+    const summary = document.createElement("summary"); summary.textContent = "解数とヒントを見る";
+    const counts = document.createElement("p");
+    counts.textContent = `初期設定の全解数：${sample.expected.different}。盤面の回転・反転を同じと数えると：${sample.expected.same}。`;
+    const hint = document.createElement("p"); hint.textContent = sample.hint;
+    answer.append(summary, counts, hint);
+    card.append(tag, title, preview, description, load, answer);
+    list.append(card);
+  }
 }
 
 const svgNS = "http://www.w3.org/2000/svg";
@@ -232,7 +323,7 @@ function startSolve(oneOnly) {
   clearSolutions();
   solvedTiles = tiles.filter((tile) => tile.grid === board.grid);
   if (tiles.length !== solvedTiles.length) setStatus("別の格子のタイルは今回の探索から除外しました。", "idle");
-  worker = new Worker(new URL("worker.js?v=20261002-hex2",import.meta.url), { type: "module" });
+  worker = new Worker(new URL("worker.js?v=20261004-gallery1",import.meta.url), { type: "module" });
   setStatus("探索中…", "busy");
   $("#cancel").disabled = false; $("#enumerate").disabled = true; $("#find-one").disabled = true;
   worker.onmessage = ({ data }) => {
@@ -293,6 +384,7 @@ $("#load-preset").addEventListener("click", () => {
   editingTileId = null; $("#add-tile").textContent = "種類を追加"; renderEditor();
 });
 $("#symmetry-mode").addEventListener("change",clearSolutions);
+$("#undo-sample").addEventListener("click", undoSample);
 $("#editor-size").addEventListener("change",()=>{
   const size=Math.min(16,Math.max(2,Math.floor(Number($("#editor-size").value)||5)));
   const allowed=new Set(shapedBoard(board.grid,size).cells.map(cellKey));
@@ -315,3 +407,4 @@ editorCells = new Set(["1,2", "2,2"]);
 $("#tile-name").value = "Domino";
 tiles.push({ id: crypto.randomUUID(), grid:"square", name:"Domino", cells:[[0,0],[1,0]], count:0, rotate:true, reflect:false, color:"#ff6b35" });
 renderTiles();
+renderSamples();
