@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="ブラウザだけで動くポリオミノ敷き詰め探索機" />
     <title>Tiling Autosolver</title>
-    <link rel="stylesheet" href="style.css?v=20261004-gallery1" />
+    <link rel="stylesheet" href="style.css?v=20261004-share1" />
   </head>
   <body>
     <header class="hero">
@@ -18,6 +18,13 @@
     </header>
 
     <main>
+      <p id="link-error" class="link-error" role="alert" hidden></p>
+      <section id="puzzle-intro" class="panel puzzle-intro" hidden>
+        <p class="eyebrow">SHARED PUZZLE</p>
+        <h2 id="puzzle-intro-title"></h2>
+        <p id="puzzle-intro-description"></p>
+        <p class="hint">自由に解いたり編集したりして、新しいURLで共有できます。</p>
+      </section>
       <section class="panel sample-panel" aria-label="サンプルパズル">
         <details id="sample-gallery" open>
           <summary class="gallery-heading"><h2>サンプルから遊ぶ</h2><span>6問 · 3種類の格子</span></summary>
@@ -115,9 +122,30 @@
           </aside>
         </div>
       </section>
+      <section class="panel share-panel" aria-labelledby="share-heading">
+        <div class="section-heading">
+          <div><span class="step">04</span><h2 id="share-heading">問題を公開する</h2></div>
+          <p>ログイン不要。URLを持っている人が問題を開けます。</p>
+        </div>
+        <div class="share-fields">
+          <label>問題名 <input id="puzzle-title" type="text" maxlength="80" placeholder="例：六角形の輪に挑戦" /></label>
+          <label>説明・出題文 <textarea id="puzzle-description" rows="3" maxlength="600" placeholder="ルールや工夫したところを書けます。"></textarea></label>
+        </div>
+        <p class="hint">現在の盤面と、同じ格子の登録済みタイル・探索設定を共有します。編集中のタイルは先に保存してください。</p>
+        <div class="controls share-actions"><button id="publish-puzzle" class="button primary">公開用URLを作成</button></div>
+        <p id="share-status" class="share-status" role="status"></p>
+        <div id="share-result" hidden>
+          <label>共有URL <textarea id="share-url" rows="3" readonly spellcheck="false"></textarea></label>
+          <div class="controls share-actions">
+            <button id="copy-share-url" class="button secondary">URLをコピー</button>
+            <a id="open-shared-puzzle" class="button ghost" target="_blank" rel="noopener">公開ページを開く ↗</a>
+          </div>
+          <p class="hint">URLには作成時の問題が保存されます。編集後はURLを作り直してください。</p>
+        </div>
+      </section>
     </main>
 
     <footer>Runs locally in your browser · No puzzle data is uploaded</footer>
-    <script type="module" src="app.js?v=20261004-gallery1"></script>
+    <script type="module" src="app.js?v=20261004-share1"></script>
   </body>
 </html>

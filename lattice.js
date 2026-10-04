@@ -114,6 +114,24 @@ export function fullBoardCells(grid, width, height) {
 
 export function cellKey(cell) { return key(cell); }
 
+function neighbors(grid, [x, y, dir]) {
+  if (grid === "square") return [[x+1,y],[x-1,y],[x,y+1],[x,y-1]];
+  if (grid === "hex") return [[x+1,y],[x-1,y],[x,y+1],[x,y-1],[x+1,y-1],[x-1,y+1]];
+  return dir === 0 ? [[x,y,1],[x,y-1,1],[x-1,y,1]] : [[x,y,0],[x+1,y,0],[x,y+1,0]];
+}
+
+export function isConnected(cells, grid) {
+  if (!cells.length) return false;
+  const ids = new Set(cells.map(cellKey)), seen = new Set([cellKey(cells[0])]), stack = [cells[0]];
+  while (stack.length) {
+    for (const next of neighbors(grid, stack.pop())) {
+      const id = cellKey(next);
+      if (ids.has(id) && !seen.has(id)) { seen.add(id); stack.push(next); }
+    }
+  }
+  return seen.size === ids.size;
+}
+
 // All board, editor and solution views use these same lattice polygons.
 export function cellPolygon(grid, cell) {
   const [x,y] = cell;

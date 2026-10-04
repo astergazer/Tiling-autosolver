@@ -6,6 +6,7 @@ A browser-based tiling enumerator. Draw a board, define tiles, and enumerate exa
 
 - Six one-click sample puzzles across all three grids, with optional hints and verified counts in both symmetry modes
 - Restore the board, tiles, unsaved tile edit, and search settings from immediately before the last sample load
+- Publish custom puzzles as self-contained share links, with Japanese titles, descriptions, and editable puzzle settings
 - Editable rectangular or holey boards on square, triangular, or hexagonal grids (up to 16 × 16 lattice cells)
 - Custom tile editor and square-grid presets
 - Optional rotations, reflections, and per-type copy limits
@@ -54,7 +55,19 @@ Open **サンプルから遊ぶ**, choose a puzzle, and press **解を列挙**. 
 
 ## Current scope
 
-The triangular board is an equilateral triangle with n² small triangles. The hexagonal board has 1 + 3n(n−1) complete hexagonal cells arranged with sixfold symmetry; its perimeter follows the cell edges. Choose the side length to resize either board. Board editing, tile editing, previews and solutions share SVG polygons derived from the solver coordinates. Click or drag to paint cells. The tile editor uses the same board shape and can be resized from 2 to 16. Preset tiles are currently available on the square grid; other grids use the custom tile editor. Count-only mode, puzzle import/export, and search animation are not implemented.
+The triangular board is an equilateral triangle with n² small triangles. The hexagonal board has 1 + 3n(n−1) complete hexagonal cells arranged with sixfold symmetry; its perimeter follows the cell edges. Choose the side length to resize either board. Board editing, tile editing, previews and solutions share SVG polygons derived from the solver coordinates. Click or drag to paint cells. The tile editor uses the same board shape and can be resized from 2 to 16. Preset tiles are currently available on the square grid; other grids use the custom tile editor. Count-only mode, file import/export, and search animation are not implemented.
+
+## Publishing a custom puzzle
+
+1. Draw the board, register the tiles, and set their counts and allowed orientations. Save any pending tile edit and apply any pending board resize.
+2. In **問題を公開する**, enter a title and optional description, then click **公開用URLを作成**.
+3. Copy the URL or open **公開ページを開く** to check it. Anyone with the link can load, solve, edit, and share their own version without signing in.
+
+The URL preserves the active grid, board shape and holes, registered tiles for that grid, tile names/colors/counts/orientations, and symmetry/search limits. Solutions and unfinished tile drafts are not included. Opening a link does not start an automatic search. Loading a sample or another link can be undone with **読み込みを戻す**, including the previous title, description, and unsaved tile edit.
+
+Links are immutable snapshots: editing a puzzle requires generating a new link. This is URL-based sharing; there is no server-side submission directory, account, short-link service, or revocation service. Keep the URL to reopen the puzzle. The payload lives in the URL fragment (`#puzzle=...`) and is not sent to the hosting server. Clipboard failure leaves the full URL selected for manual copying.
+
+`sharing.js` uses a versioned UTF-8/base64url payload and compact cell masks. It validates lengths, dimensions, cell masks, tile connectivity, counts, colors, and settings before changing the page. Shared titles/descriptions render as text. The supported limits are the existing board/editor sizes, 64 tile types, an 80-character title, a 600-character description, and a 32,000-character payload; overly large links are rejected with an explanation. Future formats should retain the version-1 decoder so existing links continue working.
 
 ## GitHub Pages
 
