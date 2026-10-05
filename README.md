@@ -4,10 +4,11 @@ A browser-based tiling enumerator. Draw a board, define tiles, and enumerate exa
 
 ## Features
 
-- Six one-click sample puzzles across all three grids, with optional hints and verified counts in both symmetry modes
+- Eight one-click sample puzzles across all four grids, with optional hints and verified counts in both symmetry modes
 - Restore the board, tiles, unsaved tile edit, and search settings from immediately before the last sample load
 - Publish custom puzzles as self-contained share links, with Japanese titles, descriptions, and editable puzzle settings
 - Editable rectangular or holey boards on square, triangular, or hexagonal grids (up to 16 × 16 lattice cells)
+- Cubic 3D boards (each side 1–8), polycube tiles, isometric views, layer editing and cutaway views
 - Custom tile editor and square-grid presets
 - Optional rotations, reflections, and per-type copy limits
 - One-solution search or bounded enumeration
@@ -44,6 +45,8 @@ Open **サンプルから遊ぶ**, choose a puzzle, and press **解を列挙**. 
 
 | Sample | Separate rotations/reflections | Merge board symmetries |
 | --- | ---: | ---: |
+| 2×2×2 cubic dominoes | 9 | 2 |
+| 2×2×2 corner polycubes | 4 | 1 |
 | 3×2 dominoes | 3 | 2 |
 | 4×4 dominoes | 36 | 9 |
 | Triangle with three 3-cell tiles | 2 | 1 |
@@ -56,6 +59,14 @@ Open **サンプルから遊ぶ**, choose a puzzle, and press **解を列挙**. 
 ## Current scope
 
 The triangular board is an equilateral triangle with n² small triangles. The hexagonal board has 1 + 3n(n−1) complete hexagonal cells arranged with sixfold symmetry; its perimeter follows the cell edges. Choose the side length to resize either board. Board editing, tile editing, previews and solutions share SVG polygons derived from the solver coordinates. Click or drag to paint cells. The tile editor uses the same board shape and can be resized from 2 to 16. Preset tiles are currently available on the square grid; other grids use the custom tile editor. Count-only mode, file import/export, and search animation are not implemented.
+
+## 3D filling
+
+Choose **立体の盤面・立方格子（3D）**, or load either cubic sample. Set X/Y/Z dimensions; each cell is a unit cube. The board and tile editor show an isometric overview and an editable horizontal layer. Layers are numbered from the bottom. Use the layer selector to edit any height; tile cells must share faces, not only edges or corners. The editor is a cube of side 2–8 and retains cells on other layers while you edit.
+
+The overview supports four camera directions and **選択層まで** to cut away upper layers. Camera and layer controls only affect the view, not the puzzle, search results or published URL. Numbered solution cross-sections show interior pieces unambiguously. A tile's rotation setting allows the 24 proper rotations of the cube; its reflection setting also allows mirrored shapes. Solution symmetry reduction uses all 48 isometries that preserve the board, including holes. Large 3D exact-cover problems grow rapidly: begin with 2×2×2 and use a solution/time limit.
+
+Cubic shares use format version 2 and preserve depth, holes, pieces and orientation settings. Existing version-1 square/triangle/hex links remain supported. This mode covers polycubes on a cubic lattice, not arbitrary continuous solids or tetrahedral packing.
 
 ## Publishing a custom puzzle
 

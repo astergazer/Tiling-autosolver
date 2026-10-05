@@ -32,7 +32,7 @@ test("enumerates the three domino tilings of a 3x2 board", () => {
 test("rejects incompatible limited tile area before search", () => {
   const result = analyzeProblem(fullBoard(3, 3), [{ ...domino, count: 4 }]);
   assert.equal(result.ok, false);
-  assert.match(result.message, /合計面積/);
+  assert.match(result.message, /合計セル数/);
 });
 
 test("returns no solution for an odd board with unlimited dominoes", () => {

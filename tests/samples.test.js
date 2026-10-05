@@ -28,8 +28,8 @@ test("all sample tiles fit their editing surface and preserve their cell orienta
     for (const tile of puzzle.tiles) {
       const allowed = new Set(shapedBoard(tile.grid, tile.editorSize).cells.map(cellKey));
       assert.ok(tile.editorCells.every(cell => allowed.has(cellKey(cell))), sample.id);
-      const [dx, dy] = tile.editorCells[0].map((value, index) => value - tile.cells[0][index]);
-      assert.deepEqual(tile.editorCells.map(cell => cell.map((value, index) => index === 0 ? value - dx : index === 1 ? value - dy : value)), tile.cells);
+      const [dx, dy, dz] = tile.editorCells[0].map((value, index) => value - tile.cells[0][index]);
+      assert.deepEqual(tile.editorCells.map(cell => cell.map((value, index) => index === 0 ? value - dx : index === 1 ? value - dy : tile.grid === "cubic" ? value - dz : value)), tile.cells);
     }
   }
 });

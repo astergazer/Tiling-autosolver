@@ -161,3 +161,18 @@ footer { padding: 28px; color: var(--muted); text-align: center; font-size: .75r
   .sample-list { grid-template-columns:1fr; }
   .gallery-heading > span { display:block; margin:7px 0 0 18px; }
 }
+
+/* A unit cube uses the same isometric scale on all three axes. */
+.voxel-overview { display:flex; justify-content:center; align-items:center; min-width:0; }
+.voxel-svg { display:block; max-width:100%; height:auto; max-height:300px; }
+.voxel-svg polygon { stroke:#f8f7f2; stroke-width:.015; stroke-linejoin:round; }
+.voxel-number { fill:#fff; font-size:.25px; font-weight:700; text-anchor:middle; dominant-baseline:central; pointer-events:none; }
+.voxel-controls { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin-top:12px; }
+.voxel-controls label { display:flex; flex-direction:column; gap:4px; font-size:12px; }
+.voxel-controls select { max-width:140px; }
+.voxel-slice { display:flex; justify-content:center; margin-top:8px; }
+.voxel-slice .lattice-svg { max-height:300px; }
+.voxel-hint { text-align:center; margin:10px 0; }
+.tile-preview .voxel-svg { max-height:64px; }
+.sample-preview .voxel-svg { max-height:130px; }
+#board:has(.voxel-overview), #tile-editor:has(.voxel-overview), #solution-board:has(.voxel-overview) { display:block; }
