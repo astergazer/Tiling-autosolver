@@ -1,5 +1,5 @@
 /** Lattice-cell tiling solver used by both the browser worker and tests. */
-import { allBoardSymmetries, cellKey, orientationsForGrid, solutionSymmetryKey } from "./lattice.js?v=20261004-share1";
+import { allBoardSymmetries, cellKey, orientationsForGrid, solutionSymmetryKey } from "./lattice.js?v=20261005-cubic1";
 
 export function normalizeCells(cells) {
   if (!cells.length) return [];
@@ -47,12 +47,12 @@ export function analyzeProblem(board, tiles) {
     0,
   );
   if (tiles.some(tile => !Number.isInteger(tile.count) || tile.count < 0)) return { ok: false, message: "枚数は0以上の整数で指定してください。" };
-  if (limitedArea > boardArea) return { ok: false, message: "指定タイルの合計面積が盤面を超えています。" };
+  if (limitedArea > boardArea) return { ok: false, message: "指定タイルの合計セル数が盤面を超えています。" };
   const hasUnlimited = tiles.some((tile) => !tile.count || tile.count < 1);
   if (!hasUnlimited && limitedArea !== boardArea) {
     return {
       ok: false,
-      message: `盤面は${boardArea}マスですが、指定タイルの合計面積は${limitedArea}です。`,
+      message: `盤面は${boardArea}マスですが、指定タイルの合計セル数は${limitedArea}です。`,
     };
   }
 
@@ -63,7 +63,7 @@ export function analyzeProblem(board, tiles) {
       return a;
     });
     if ((boardArea - limitedArea) % gcd !== 0) {
-      return { ok: false, message: "面積の合同条件を満たさないため敷き詰められません。" };
+      return { ok: false, message: "セル数の合同条件を満たさないため敷き詰められません。" };
     }
   }
   return { ok: true, message: "探索可能です。" };
@@ -82,16 +82,21 @@ function buildPlacements(board, tiles) {
       const maxY = Math.max(...variant.map(([, y]) => y));
       const minX = Math.min(...variant.map(([x]) => x));
       const minY = Math.min(...variant.map(([, y]) => y));
-      for (let y = -minY; y + maxY < board.height; y += 1) {
-        for (let x = -minX; x + maxX < board.width; x += 1) {
-          const absolute = variant.map((cell) => grid === "triangle"
-            ? [cell[0] + x, cell[1] + y, cell[2]]
-            : [cell[0] + x, cell[1] + y]);
-          const keys = absolute.map(cellKey);
-          if (!keys.every((key) => boardSet.has(key))) continue;
-          const placement = { tileIndex, cells: absolute, keys };
-          const placementIndex = placements.push(placement) - 1;
-          keys.forEach((key) => byCell.get(key).push(placementIndex));
+      const maxZ = grid === "cubic" ? Math.max(...variant.map(c=>c[2])) : 0;
+      for (let z = 0; z + maxZ < (grid === "cubic" ? board.depth : 1); z += 1) {
+        for (let y = -minY; y + maxY < board.height; y += 1) {
+          for (let x = -minX; x + maxX < board.width; x += 1) {
+            const absolute = variant.map((cell) => grid === "cubic"
+              ? [cell[0]+x, cell[1]+y, cell[2]+z]
+              : grid === "triangle"
+              ? [cell[0] + x, cell[1] + y, cell[2]]
+              : [cell[0] + x, cell[1] + y]);
+            const keys = absolute.map(cellKey);
+            if (!keys.every((key) => boardSet.has(key))) continue;
+            const placement = { tileIndex, cells: absolute, keys };
+            const placementIndex = placements.push(placement) - 1;
+            keys.forEach((key) => byCell.get(key).push(placementIndex));
+          }
         }
       }
     }

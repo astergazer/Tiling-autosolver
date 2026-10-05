@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="ブラウザだけで動くポリオミノ敷き詰め探索機" />
     <title>Tiling Autosolver</title>
-    <link rel="stylesheet" href="style.css?v=20261004-share1" />
+    <link rel="stylesheet" href="style.css?v=20261005-cubic1" />
   </head>
   <body>
     <header class="hero">
@@ -27,7 +27,7 @@
       </section>
       <section class="panel sample-panel" aria-label="サンプルパズル">
         <details id="sample-gallery" open>
-          <summary class="gallery-heading"><h2>サンプルから遊ぶ</h2><span>6問 · 3種類の格子</span></summary>
+          <summary class="gallery-heading"><h2>サンプルから遊ぶ</h2><span>8問 · 4種類の格子</span></summary>
           <p class="hint">問題を読み込むと、盤面・タイル・探索設定が切り替わります。読み込み直前の編集内容には「読み込みを戻す」で戻れます。</p>
           <div id="sample-list" class="sample-list"></div>
         </details>
@@ -43,13 +43,15 @@
           <p>格子を選び、セルをクリックして盤面を編集します。</p>
         </div>
         <div class="controls compact">
-          <label>格子 <select id="grid-type"><option value="square">四角形の盤面・正方格子</option><option value="triangle">正三角形の盤面・三角格子</option><option value="hex">六角形の盤面・六角格子</option></select></label>
+          <label>格子 <select id="grid-type"><option value="square">四角形の盤面・正方格子</option><option value="triangle">正三角形の盤面・三角格子</option><option value="cubic">立体の盤面・立方格子（3D）</option><option value="hex">六角形の盤面・六角格子</option></select></label>
           <label><span id="width-label">横</span> <input id="board-width" type="number" min="1" max="16" value="6" /></label>
-          <label id="height-field">縦 <input id="board-height" type="number" min="1" max="16" value="6" /></label>
+          <label id="height-field">縦 Y <input id="board-height" type="number" min="1" max="16" value="6" /></label>
+          <label id="depth-field" hidden>高さ Z <input id="board-depth" type="number" min="1" max="8" value="2" /></label>
           <button id="resize-board" class="button secondary">変更</button>
           <button id="fill-board" class="button ghost">全選択</button>
           <button id="clear-board" class="button ghost">全解除</button>
         </div>
+        <p id="cubic-hint" class="hint" hidden>3Dは各辺1〜8セル。まずは2×2×2のサンプルから。回転は24通り、反転を許すと鏡像も使います。大きな立体は探索に時間がかかります。</p>
         <div id="board" class="grid board" aria-label="盤面エディタ"></div>
         <p id="board-summary" class="summary"></p>
       </section>
@@ -146,6 +148,6 @@
     </main>
 
     <footer>Runs locally in your browser · No puzzle data is uploaded</footer>
-    <script type="module" src="app.js?v=20261004-share1"></script>
+    <script type="module" src="app.js?v=20261005-cubic1"></script>
   </body>
 </html>

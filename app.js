@@ -1,6 +1,7 @@
-import { cellKey, shapedBoard, cellPolygon, isConnected } from "./lattice.js?v=20261004-share1";
-import { SAMPLE_PUZZLES, createSamplePuzzle } from "./samples.js?v=20261004-share1";
-import { createShareUrl, decodePuzzle } from "./sharing.js?v=20261004-share1";
+import { drawCubic } from "./voxel-view.js?v=20261005-cubic1";
+import { cellKey, shapedBoard, cellPolygon, isConnected, transformShape } from "./lattice.js?v=20261005-cubic1";
+import { SAMPLE_PUZZLES, createSamplePuzzle } from "./samples.js?v=20261005-cubic1";
+import { createShareUrl, decodePuzzle } from "./sharing.js?v=20261005-cubic1";
 
 const $ = (selector) => document.querySelector(selector);
 const boardElement = $("#board");
@@ -52,25 +53,31 @@ function clearSolutions(problemChanged = true) {
   renderSolutionBoard();
 }
 
-function resetBoard(size = Number($("#board-width").value), height = Number($("#board-height").value)) {
+function resetBoard(size = Number($("#board-width").value), height = Number($("#board-height").value), depth = Number($("#board-depth").value)) {
   const grid = $("#grid-type").value;
-  size=Math.min(16,Math.max(1,Math.floor(size)||6));
-  height=Math.min(16,Math.max(1,Math.floor(height)||6));
+  const limit = grid === "cubic" ? 8 : 16;
+  depth=Math.min(limit,Math.max(1,Math.floor(depth)||2));
+  $("#board-depth").value=depth;
+  size=Math.min(limit,Math.max(1,Math.floor(size)||6));
+  height=Math.min(limit,Math.max(1,Math.floor(height)||6));
   $("#board-width").value=size; $("#board-height").value=height;
-  const shape = shapedBoard(grid, size, height);
+  const shape = shapedBoard(grid, size, height, depth);
   board = {...shape, active:new Set(shape.cells.map(cellKey))};
   updateBoardControls();
   clearSolutions(); renderBoard();
 }
 
 function updateBoardControls() {
-  $("#width-label").textContent = board.grid === "square" ? "横" : "一辺のセル数";
-  $("#height-field").hidden = board.grid !== "square";
+  $("#width-label").textContent = ["square","cubic"].includes(board.grid) ? "横 X" : "一辺のセル数";
+  $("#height-field").hidden = !["square","cubic"].includes(board.grid);
+  $("#depth-field").hidden = board.grid !== "cubic";
+  $("#cubic-hint").hidden = board.grid !== "cubic";
+  for(const id of ["board-width","board-height","editor-size"]) $(`#${id}`).max = board.grid === "cubic" ? 8 : 16;
   $("#preset-select").disabled = board.grid !== "square";
   $("#load-preset").disabled = board.grid !== "square";
 }
 
-const puzzleFields = ["grid-type", "board-width", "board-height", "editor-size", "tile-name", "tile-count", "tile-color", "preset-select", "symmetry-mode", "solution-limit", "time-limit", "puzzle-title", "puzzle-description"];
+const puzzleFields = ["grid-type", "board-width", "board-height", "board-depth", "editor-size", "tile-name", "tile-count", "tile-color", "preset-select", "symmetry-mode", "solution-limit", "time-limit", "puzzle-title", "puzzle-description"];
 
 function capturePuzzle() {
   return structuredClone({
@@ -83,7 +90,7 @@ function capturePuzzle() {
 function applyPuzzle(sample, showInfo = false) {
   beforeSample = capturePuzzle();
   $("#grid-type").value = sample.board.grid;
-  resetBoard(sample.size, sample.height ?? sample.size);
+  resetBoard(sample.size, sample.height ?? sample.size, sample.board.depth);
   board.active = new Set(sample.board.cells.map(cellKey));
   tiles = sample.tiles.map((tile, index) => ({ ...tile, id: crypto.randomUUID(), color: tile.color ?? palette[index % palette.length] }));
   const firstTile = tiles[0];
@@ -164,7 +171,7 @@ function publishPuzzle() {
   invalidateShareLink();
   if (tileDraftDirty) return setShareStatus("タイルの編集内容が未保存です。「種類を追加」または「変更を保存」を押してから公開してください。", "error");
   const size = board.grid === "hex" ? (board.width + 1) / 2 : board.width;
-  if (Number($("#board-width").value) !== size || (board.grid === "square" && Number($("#board-height").value) !== board.height)) {
+  if (Number($("#board-width").value) !== size || (["square","cubic"].includes(board.grid) && Number($("#board-height").value) !== board.height) || (board.grid === "cubic" && Number($("#board-depth").value) !== board.depth)) {
     return setShareStatus("盤面の寸法が未反映です。盤面の「変更」を押してから公開してください。", "error");
   }
   try {
@@ -209,7 +216,7 @@ function loadSharedPuzzle() {
 
 function renderSamples() {
   const list = $("#sample-list");
-  const names = { square: "正方格子", triangle: "三角格子", hex: "六角格子" };
+  const names = { square: "正方格子", triangle: "三角格子", hex: "六角格子", cubic: "立方格子" };
   list.replaceChildren();
   for (const entry of SAMPLE_PUZZLES) {
     const sample = createSamplePuzzle(entry.id);
@@ -219,7 +226,7 @@ function renderSamples() {
     const title = document.createElement("h3"); title.textContent = sample.title;
     const preview = document.createElement("div"); preview.className = "sample-preview";
     preview.setAttribute("aria-hidden", "true");
-    const shape = shapedBoard(sample.grid, sample.size, sample.height ?? sample.size);
+    const shape = shapedBoard(sample.grid, sample.size, sample.height ?? sample.size, sample.board.depth);
     drawGrid(preview, sample.grid, shape.cells, new Set(sample.board.cells.map(cellKey)));
     const description = document.createElement("p"); description.className = "sample-description";
     description.textContent = sample.description;
@@ -247,6 +254,7 @@ function svgNode(name, attrs = {}) {
 }
 
 function drawGrid(container, grid, cells, selected, onToggle = null, placed = new Map()) {
+  if(grid === "cubic") return drawCubic(container,cells,selected,onToggle,placed,drawGrid);
   container.replaceChildren();
   if(!cells.length) return;
   const polygons = cells.map(cell => cellPolygon(grid,cell));
@@ -297,7 +305,7 @@ function drawGrid(container, grid, cells, selected, onToggle = null, placed = ne
 }
 
 function updateSummary() {
-  const names={square:"四角形",triangle:"正三角形",hex:"六角形"};
+  const names={square:"四角形",triangle:"正三角形",hex:"六角形",cubic:`${board.width}×${board.height}×${board.depth} の立体`};
   $("#board-summary").textContent=`${names[board.grid]}の盤面 ／ 使用 ${board.active.size} セル`;
 }
 function renderBoard() {
@@ -320,18 +328,14 @@ function renderEditor() {
 function normalizedEditorCells() {
   const cells = [...editorCells].map((id) => id.split(",").map(Number));
   if (!cells.length) return [];
-  const minX = Math.min(...cells.map(([x]) => x));
-  const minY = Math.min(...cells.map(([, y]) => y));
-  return cells.map((cell) => cell.length === 3
-    ? [cell[0] - minX, cell[1] - minY, cell[2]]
-    : [cell[0] - minX, cell[1] - minY]);
+  return transformShape(board.grid,cells);
 }
 
 function addTile() {
   const grid = $("#grid-type").value;
   const cells = normalizedEditorCells();
   if (!cells.length) return setStatus("タイルのセルを選択してください。", "error");
-  if (!isConnected(cells, grid)) return setStatus("タイルは辺を共有するセル同士でつなげてください。", "error");
+  if (!isConnected(cells, grid)) return setStatus("タイルのセルをつなげてください（立体は面、それ以外は辺を共有）。", "error");
   const tile = {
     id: editingTileId ?? crypto.randomUUID(), grid, cells,
     editorCells:[...editorCells].map(id=>id.split(",").map(Number)), editorSize:Number($("#editor-size").value),
@@ -386,14 +390,14 @@ function renderTiles() {
 }
 
 function serializableBoard() {
-  return { grid: board.grid, width: board.width, height: board.height, cells: [...board.active].map((id) => id.split(",").map(Number)) };
+  return { grid: board.grid, width: board.width, height: board.height, ...(board.grid === "cubic" ? {depth:board.depth} : {}), cells: [...board.active].map((id) => id.split(",").map(Number)) };
 }
 
 function startSolve(oneOnly) {
   clearSolutions(false);
   solvedTiles = tiles.filter((tile) => tile.grid === board.grid);
   if (tiles.length !== solvedTiles.length) setStatus("別の格子のタイルは今回の探索から除外しました。", "idle");
-  worker = new Worker(new URL("worker.js?v=20261004-share1",import.meta.url), { type: "module" });
+  worker = new Worker(new URL("worker.js?v=20261005-cubic1",import.meta.url), { type: "module" });
   setStatus("探索中…", "busy");
   $("#cancel").disabled = false; $("#enumerate").disabled = true; $("#find-one").disabled = true;
   worker.onmessage = ({ data }) => {
@@ -419,7 +423,7 @@ function renderSolutionBoard() {
   if(solution) solution.forEach((placement,index)=>placement.cells.forEach(cell=>{
     placed.set(cellKey(cell),{color:palette[index%palette.length],label:index+1,name:solvedTiles[placement.tileIndex]?.name || "タイル"});
   }));
-  drawGrid(solutionElement,board.grid,board.cells.filter(c=>board.active.has(cellKey(c))),board.active,null,placed);
+  drawGrid(solutionElement,board.grid,board.grid === "cubic" ? board.cells : board.cells.filter(c=>board.active.has(cellKey(c))),board.active,null,placed);
   $("#solution-count").textContent = solutions.length.toLocaleString("ja-JP");
   $("#solution-index").textContent = solutions.length ? `${currentSolution + 1} / ${solutions.length}` : "— / —";
   $("#previous-solution").disabled = currentSolution <= 0;
@@ -430,9 +434,11 @@ $("#grid-type").addEventListener("change", () => {
   editingTileId = null; editorCells.clear();
   tileDraftDirty = false;
   const grid = $("#grid-type").value;
-  editorCells = new Set(grid === "triangle" ? ["1,2,0","1,2,1"] : grid === "hex" ? ["4,4","5,4"] : ["1,2","2,2"]);
+  editorCells = new Set(grid === "cubic" ? ["0,0,0","1,0,0"] : grid === "triangle" ? ["1,2,0","1,2,1"] : grid === "hex" ? ["4,4","5,4"] : ["1,2","2,2"]);
   $("#add-tile").textContent = "種類を追加";
-  $("#editor-size").value=5; resetBoard(); renderEditor(); renderTiles();
+  $("#editor-size").value=grid === "cubic" ? 3 : 5;
+  if(grid === "cubic") { $("#tile-name").value="立体ドミノ"; resetBoard(2,2,2); } else resetBoard();
+  renderEditor(); renderTiles();
 });
 $("#resize-board").addEventListener("click", () => {
   const width = Math.min(16, Math.max(1, Math.floor(Number($("#board-width").value) || 6)));
@@ -444,7 +450,7 @@ $("#clear-board").addEventListener("click", () => { board.active.clear(); clearS
 $("#add-tile").addEventListener("click", addTile);
 $("#clear-tile").addEventListener("click", () => { editingTileId = null; editorCells.clear(); tileDraftDirty = false; $("#add-tile").textContent = "種類を追加"; renderEditor(); });
 $("#load-preset").addEventListener("click", () => {
-  if (["triangle","hex"].includes($("#grid-type").value)) return setStatus("三角・六角格子では編集面を使ってセルを描いてください。", "error");
+  if ($("#grid-type").value !== "square") return setStatus("三角・六角格子では編集面を使ってセルを描いてください。", "error");
   const preset = presets[$("#preset-select").value];
   tileDraftDirty = true; invalidateShareLink();
   $("#editor-size").value=5;
@@ -458,12 +464,12 @@ $("#copy-share-url").addEventListener("click", copyShareUrl);
 for (const id of ["tile-name", "tile-count", "tile-color", "tile-rotate", "tile-reflect"]) {
   $(`#${id}`).addEventListener("input", () => { tileDraftDirty = true; invalidateShareLink(); });
 }
-for (const id of ["puzzle-title", "puzzle-description", "solution-limit", "time-limit", "board-width", "board-height"]) {
+for (const id of ["puzzle-title", "puzzle-description", "solution-limit", "time-limit", "board-width", "board-height", "board-depth"]) {
   $(`#${id}`).addEventListener("input", () => { invalidateShareLink(); renderPuzzleInfo(); });
 }
 window.addEventListener("hashchange", loadSharedPuzzle);
 $("#editor-size").addEventListener("change",()=>{
-  const size=Math.min(16,Math.max(2,Math.floor(Number($("#editor-size").value)||5)));
+  const size=Math.min(board.grid === "cubic" ? 8 : 16,Math.max(2,Math.floor(Number($("#editor-size").value)||5)));
   const allowed=new Set(shapedBoard(board.grid,size).cells.map(cellKey));
   if([...editorCells].some(id=>!allowed.has(id))) {
     $("#editor-size").value=editorSizeBeforeChange;
